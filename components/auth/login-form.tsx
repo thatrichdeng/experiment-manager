@@ -298,9 +298,9 @@ export default function LoginForm({ onAuthSuccess }: LoginFormProps) {
             <div className="text-center">
               <p className="text-sm text-blue-800 font-medium mb-2">Demo Account</p>
               <p className="text-xs text-blue-600">
-                Email: demo@research.com
+                Email: richdengtesting@gmail.com
                 <br />
-                Password: demo123
+                Password: testing
               </p>
             </div>
           </CardContent>
