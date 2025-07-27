@@ -124,8 +124,8 @@ export default function LoginForm({ onAuthSuccess }: LoginFormProps) {
               <Beaker className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Research Platform</h1>
-          <p className="text-gray-600 mt-2">Manage your experiments and research data</p>
+          <h1 className="text-3xl font-bold text-gray-900">Experiment Manager</h1>
+          <p className="text-gray-600 mt-2">Easily find your experiments and research data</p>
         </div>
 
         <Card>
