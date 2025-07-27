@@ -1,4 +1,4 @@
-"use client"
+p"use client"
 
 import type React from "react"
 
@@ -477,8 +477,8 @@ export default function ResearchPlatform() {
         {/* Header with User Profile */}
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold text-gray-900">Research Platform</h1>
-            <p className="text-gray-600">Manage experiments, protocols, and research data</p>
+            <h1 className="text-4xl font-bold text-gray-900">Experiment Manager</h1>
+            <p className="text-gray-600">Easily find your experiments and research data</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
