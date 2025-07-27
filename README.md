@@ -1,6 +1,6 @@
-# Research Platform
+# Experiment manager
 
-A Next.js application for managing research experiments, protocols, and data with Supabase authentication.
+Easily find your experiments and research data
 
 ## Features
 
