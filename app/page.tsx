@@ -75,9 +75,11 @@ export default function ResearchPlatform() {
   // Authentication state
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [demoMode, setDemoMode] = useState(false)
 
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [demoTags, setDemoTags] = useState<Tag[]>([]) // Local storage for demo mode
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -207,7 +209,9 @@ export default function ResearchPlatform() {
   }
 
   const fetchTags = async () => {
-    if (!user) return
+    if (!user) {
+      return
+    }
 
     try {
       // Fetch tags for the current user
@@ -387,13 +391,88 @@ export default function ResearchPlatform() {
     }
   }
 
+  // Demo mode tag management
+  const createDemoTag = (tagData: { name: string; category: string; color: string }): Tag => {
+    const newTag: Tag = {
+      id: "demo-" + Date.now(),
+      user_id: "demo-user",
+      name: tagData.name.trim(),
+      category: tagData.category as any,
+      color: tagData.color,
+      created_at: new Date().toISOString(),
+    }
+    
+    const updatedDemoTags = [...demoTags, newTag]
+    setDemoTags(updatedDemoTags)
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('demo-tags', JSON.stringify(updatedDemoTags))
+    
+    return newTag
+  }
+
+  const loadDemoTags = () => {
+    try {
+      const saved = localStorage.getItem('demo-tags')
+      if (saved) {
+        const parsedTags = JSON.parse(saved)
+        setDemoTags(parsedTags)
+      } else {
+        // Initialize with some default demo tags
+        const defaultTags: Tag[] = [
+          {
+            id: "demo-1",
+            user_id: "demo-user",
+            name: "E. coli",
+            category: "organism",
+            color: "#10B981",
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "demo-2", 
+            user_id: "demo-user",
+            name: "PCR",
+            category: "technique",
+            color: "#3B82F6",
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "demo-3",
+            user_id: "demo-user", 
+            name: "Antibody",
+            category: "reagent",
+            color: "#8B5CF6",
+            created_at: new Date().toISOString(),
+          }
+        ]
+        setDemoTags(defaultTags)
+        localStorage.setItem('demo-tags', JSON.stringify(defaultTags))
+      }
+    } catch (error) {
+      console.error("Error loading demo tags:", error)
+    }
+  }
+
   // New function to handle tag creation from the TagSelector
   const handleCreateTagFromSelector = async (tagData: {
     name: string
     category: string
     color: string
   }): Promise<Tag | null> => {
-    if (!user) return null
+    // Handle demo mode
+    if (demoMode) {
+      const existingTag = demoTags.find(tag => tag.name.toLowerCase() === tagData.name.toLowerCase())
+      if (existingTag) {
+        return existingTag
+      }
+      
+      const newTag = createDemoTag(tagData)
+      return newTag
+    }
+    
+    if (!user) {
+      return null
+    }
 
     try {
       // Check if tag already exists for this user
@@ -409,21 +488,20 @@ export default function ResearchPlatform() {
       }
 
       if (existingTags && existingTags.length > 0) {
-        console.log("Tag already exists:", existingTags[0])
         return existingTags[0]
       }
 
       // Insert the new tag with user_id
+      const insertData = {
+        name: tagData.name.trim(),
+        category: tagData.category,
+        color: tagData.color,
+        user_id: user.id,
+      }
+
       const { data, error } = await supabase
         .from("tags")
-        .insert([
-          {
-            name: tagData.name.trim(),
-            category: tagData.category,
-            color: tagData.color,
-            user_id: user.id,
-          },
-        ])
+        .insert([insertData])
         .select()
         .single()
 
@@ -573,18 +651,77 @@ export default function ResearchPlatform() {
     )
   }
 
-  // Show login form if user is not authenticated
-  if (!user) {
-    return <LoginForm onAuthSuccess={handleAuthSuccess} />
+      // Show login form if user is not authenticated and not in demo mode
+    if (!user && !demoMode) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full space-y-6">
+          <div className="text-center">
+            <Beaker className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900">Experiment Manager</h1>
+            <p className="text-gray-600 mt-2">Sign in to manage your experiments and create tags</p>
+          </div>
+          <LoginForm onAuthSuccess={handleAuthSuccess} />
+          <div className="text-center">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-gray-50 px-2 text-gray-500">Or</span>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full mt-4"
+              onClick={() => {
+                setDemoMode(true)
+                loadDemoTags()
+                setAuthLoading(false)
+              }}
+            >
+              Try Demo Mode (No Sign-up Required)
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Demo mode lets you test the tagging feature without creating an account. Data is stored locally.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
+        {demoMode && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Beaker className="h-5 w-5 text-yellow-600" />
+              <span className="font-medium text-yellow-800">Demo Mode</span>
+            </div>
+            <p className="text-yellow-700 text-sm mt-1">
+              You're using the demo version. Tags are stored locally. 
+              <Button 
+                variant="link" 
+                className="h-auto p-0 ml-1 text-yellow-800 underline"
+                onClick={() => {
+                  setDemoMode(false)
+                  setDemoTags([])
+                  localStorage.removeItem('demo-tags')
+                }}
+              >
+                Exit Demo Mode
+              </Button>
+            </p>
+          </div>
+        )}
         {/* Header with User Profile */}
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold text-gray-900">Experiment Manager</h1>
+            <h1 className="text-4xl font-bold text-gray-900">
+              Experiment Manager {demoMode && <span className="text-lg bg-yellow-100 text-yellow-800 px-2 py-1 rounded ml-2">Demo</span>}
+            </h1>
             <p className="text-gray-600">Easily find your experiments and research data</p>
           </div>
           <div className="flex items-center gap-4">
@@ -754,7 +891,7 @@ export default function ResearchPlatform() {
                         </div>
 
                         <TagSelector
-                          availableTags={tags}
+                          availableTags={demoMode ? demoTags : tags}
                           selectedTagIds={newExperiment.tag_ids}
                           onTagsChange={(tagIds) => setNewExperiment({ ...newExperiment, tag_ids: tagIds })}
                           onCreateTag={handleCreateTagFromSelector}
@@ -1027,6 +1164,7 @@ export default function ResearchPlatform() {
           </TabsContent>
 
           <TabsContent value="tags" className="space-y-4">
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1036,7 +1174,7 @@ export default function ResearchPlatform() {
                 <CardDescription>View all tags you've created for organizing experiments</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {tags.length === 0 ? (
+                {(demoMode ? demoTags : tags).length === 0 ? (
                   <div className="text-center py-8">
                     <TagIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 mb-2">No tags created yet</p>
@@ -1048,13 +1186,13 @@ export default function ResearchPlatform() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-600">
-                        {tags.length} tag{tags.length !== 1 ? "s" : ""} available
+                        {(demoMode ? demoTags : tags).length} tag{(demoMode ? demoTags : tags).length !== 1 ? "s" : ""} available
                       </p>
                     </div>
 
                     <div className="space-y-4">
                       {["organism", "reagent", "technique", "equipment", "other"].map((category) => {
-                        const categoryTags = tags.filter((tag) => tag.category === category)
+                        const categoryTags = (demoMode ? demoTags : tags).filter((tag) => tag.category === category)
                         if (categoryTags.length === 0) return null
 
                         return (

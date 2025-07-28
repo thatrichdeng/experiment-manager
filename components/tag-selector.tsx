@@ -12,9 +12,11 @@ import { Plus, Search, X } from "lucide-react"
 
 interface Tag {
   id: string
+  user_id: string
   name: string
   category: "organism" | "reagent" | "technique" | "equipment" | "other"
   color: string
+  created_at: string
 }
 
 interface TagSelectorProps {
