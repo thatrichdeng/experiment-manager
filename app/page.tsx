@@ -5,11 +5,13 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -29,87 +31,98 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import TagSelector from "@/components/tag-selector"
-import LoginForm from "@/components/auth/login-form"
-import UserProfile from "@/components/auth/user-profile"
 import {
   Plus,
   Search,
-  Calendar,
-  User,
   FileText,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Beaker,
   Database,
   TagIcon,
+  Calendar,
+  User,
+  Beaker,
   Microscope,
   FlaskConical,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  Download,
 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
-// Initialize Supabase client
+// Import components
+import TagSelector from "@/components/tag-selector"
+import LoginForm from "@/components/auth/login-form"
+import UserProfile from "@/components/auth/user-profile"
+import { FileUpload } from "@/components/file-upload"
+
+// Create Supabase client (singleton pattern)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vnrbidtckiaxljjzmxul.supabase.co",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZucmJpZHRja2lheGxqanpteHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTM2NzAsImV4cCI6MjA2OTA2OTY3MH0._WO1fuFuFUXvlL6Gsz14CsyxbJzqztdv435FAVslg6I",
 )
 
+interface Experiment {
+  id: string
+  user_id: string
+  title: string
+  description?: string
+  researcher_name?: string
+  protocol?: string
+  status?: "planning" | "in_progress" | "completed" | "on_hold"
+  visibility?: string
+  created_at: string
+  updated_at?: string
+  tags: any[]
+  protocols: any[]
+  files: any[]
+  results: any[]
+}
+
 interface Tag {
   id: string
+  user_id: string
   name: string
   category: "organism" | "reagent" | "technique" | "equipment" | "other"
   color: string
-  user_id: string
-}
-
-interface Experiment {
-  id: string
-  title: string
-  description: string
-  researcher_name: string
-  protocol: string
-  status: "planning" | "in_progress" | "completed" | "on_hold"
   created_at: string
-  updated_at: string
-  user_id: string
-  tags?: Tag[]
-  protocols?: any[]
-  files?: any[]
-  results?: any[]
 }
 
-interface ExperimentFormData {
-  title: string
-  description: string
-  researcher_name: string
-  protocol: string
-  status: "planning" | "in_progress" | "completed" | "on_hold"
-  tag_ids: string[]
-}
-
-export default function ExperimentManager() {
+export default function ResearchPlatform() {
+  // Authentication state
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
+
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isAddExperimentOpen, setIsAddExperimentOpen] = useState(false)
   const [editingExperiment, setEditingExperiment] = useState<Experiment | null>(null)
-  const [formData, setFormData] = useState<ExperimentFormData>({
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({})
+
+  // New experiment form state
+  const [newExperiment, setNewExperiment] = useState({
     title: "",
     description: "",
     researcher_name: "",
     protocol: "",
-    status: "planning",
-    tag_ids: [],
+    status: "planning" as const,
+    tag_ids: [] as string[],
+  })
+
+  // Edit experiment form state
+  const [editExperimentForm, setEditExperimentForm] = useState({
+    title: "",
+    description: "",
+    researcher_name: "",
+    protocol: "",
+    status: "planning" as const,
+    tag_ids: [] as string[],
   })
 
   // Check authentication status on mount
@@ -153,28 +166,6 @@ export default function ExperimentManager() {
       fetchTags()
     }
   }, [user])
-
-  const fetchTags = async () => {
-    if (!user) return
-
-    try {
-      const { data, error } = await supabase
-        .from("tags")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name", { ascending: true })
-
-      if (error) {
-        console.error("Error fetching tags:", error)
-        return
-      }
-
-      setTags(data || [])
-    } catch (err) {
-      console.error("Fetch tags error:", err)
-      setTags([])
-    }
-  }
 
   const fetchExperiments = async () => {
     if (!user) return
@@ -232,20 +223,44 @@ export default function ExperimentManager() {
     }
   }
 
-  const handleCreateExperiment = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const fetchTags = async () => {
     if (!user) return
 
     try {
-      const { data: experiment, error: experimentError } = await supabase
+      // Fetch tags for the current user
+      const { data, error } = await supabase
+        .from("tags")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name", { ascending: true })
+
+      if (error) {
+        console.error("Error fetching tags:", error)
+        return
+      }
+
+      setTags(data || [])
+    } catch (err) {
+      console.error("Fetch tags error:", err)
+      setTags([])
+    }
+  }
+
+  const addExperiment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newExperiment.title.trim() || !user) return
+
+    try {
+      // Insert experiment with user_id
+      const { data: experimentData, error: experimentError } = await supabase
         .from("experiments")
         .insert([
           {
-            title: formData.title,
-            description: formData.description,
-            researcher_name: formData.researcher_name,
-            protocol: formData.protocol,
-            status: formData.status,
+            title: newExperiment.title,
+            description: newExperiment.description,
+            researcher_name: newExperiment.researcher_name,
+            protocol: newExperiment.protocol,
+            status: newExperiment.status,
             user_id: user.id,
           },
         ])
@@ -253,28 +268,27 @@ export default function ExperimentManager() {
         .single()
 
       if (experimentError) {
-        console.error("Error creating experiment:", experimentError)
+        console.error("Error adding experiment:", experimentError)
         alert("Failed to create experiment. Please try again.")
         return
       }
 
-      // Add tags to experiment
-      if (formData.tag_ids.length > 0) {
-        const tagRelations = formData.tag_ids.map((tagId) => ({
-          experiment_id: experiment.id,
-          tag_id: tagId,
+      // Add tags if any selected
+      if (newExperiment.tag_ids.length > 0) {
+        const tagInserts = newExperiment.tag_ids.map((tag_id) => ({
+          experiment_id: experimentData.id,
+          tag_id,
         }))
 
-        const { error: tagsError } = await supabase.from("experiment_tags").insert(tagRelations)
+        const { error: tagError } = await supabase.from("experiment_tags").insert(tagInserts)
 
-        if (tagsError) {
-          console.error("Error adding tags:", tagsError)
-          alert(`Experiment created but failed to add tags: ${tagsError.message}`)
+        if (tagError) {
+          console.error("Error adding tags:", tagError)
+          alert(`Experiment created but failed to add tags: ${tagError.message}`)
         }
       }
 
-      setIsCreateDialogOpen(false)
-      setFormData({
+      setNewExperiment({
         title: "",
         description: "",
         researcher_name: "",
@@ -282,26 +296,28 @@ export default function ExperimentManager() {
         status: "planning",
         tag_ids: [],
       })
+      setIsAddExperimentOpen(false)
       fetchExperiments()
-    } catch (error) {
-      console.error("Error creating experiment:", error)
+    } catch (err) {
+      console.error("Add experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
     }
   }
 
-  const handleEditExperiment = async (e: React.FormEvent) => {
+  const updateExperiment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !editingExperiment) return
+    if (!editExperimentForm.title.trim() || !editingExperiment || !user) return
 
     try {
+      // Update experiment
       const { error: experimentError } = await supabase
         .from("experiments")
         .update({
-          title: formData.title,
-          description: formData.description,
-          researcher_name: formData.researcher_name,
-          protocol: formData.protocol,
-          status: formData.status,
+          title: editExperimentForm.title,
+          description: editExperimentForm.description,
+          researcher_name: editExperimentForm.researcher_name,
+          protocol: editExperimentForm.protocol,
+          status: editExperimentForm.status,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingExperiment.id)
@@ -316,44 +332,35 @@ export default function ExperimentManager() {
       // Remove existing tags
       await supabase.from("experiment_tags").delete().eq("experiment_id", editingExperiment.id)
 
-      // Add new tags
-      if (formData.tag_ids.length > 0) {
-        const tagRelations = formData.tag_ids.map((tagId) => ({
+      // Add new tags if any selected
+      if (editExperimentForm.tag_ids.length > 0) {
+        const tagInserts = editExperimentForm.tag_ids.map((tag_id) => ({
           experiment_id: editingExperiment.id,
-          tag_id: tagId,
+          tag_id,
         }))
 
-        const { error: tagsError } = await supabase.from("experiment_tags").insert(tagRelations)
+        const { error: tagError } = await supabase.from("experiment_tags").insert(tagInserts)
 
-        if (tagsError) {
-          console.error("Error updating tags:", tagsError)
-          alert(`Experiment updated but failed to update tags: ${tagsError.message}`)
+        if (tagError) {
+          console.error("Error updating tags:", tagError)
+          alert(`Experiment updated but failed to update tags: ${tagError.message}`)
         }
       }
 
-      setIsEditDialogOpen(false)
       setEditingExperiment(null)
-      setFormData({
-        title: "",
-        description: "",
-        researcher_name: "",
-        protocol: "",
-        status: "planning",
-        tag_ids: [],
-      })
+      setIsEditDialogOpen(false)
       fetchExperiments()
-    } catch (error) {
-      console.error("Error updating experiment:", error)
+    } catch (err) {
+      console.error("Update experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
     }
   }
 
-  const handleDeleteExperiment = async (experimentId: string) => {
+  const deleteExperiment = async (experimentId: string) => {
     if (!user) return
 
     try {
-      // Delete related data first
-      await supabase.from("experiment_tags").delete().eq("experiment_id", experimentId)
+      // Delete related data first (experiment_tags will be deleted by CASCADE)
       await supabase.from("protocols").delete().eq("experiment_id", experimentId)
       await supabase.from("results").delete().eq("experiment_id", experimentId)
       await supabase.from("files").delete().eq("experiment_id", experimentId)
@@ -368,25 +375,26 @@ export default function ExperimentManager() {
       }
 
       fetchExperiments()
-    } catch (error) {
-      console.error("Error deleting experiment:", error)
+    } catch (err) {
+      console.error("Delete experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
     }
   }
 
-  const openEditDialog = (experiment: Experiment) => {
+  const handleEditExperiment = (experiment: Experiment) => {
     setEditingExperiment(experiment)
-    setFormData({
+    setEditExperimentForm({
       title: experiment.title,
       description: experiment.description || "",
       researcher_name: experiment.researcher_name || "",
       protocol: experiment.protocol || "",
-      status: experiment.status,
-      tag_ids: experiment.tags?.map((tag) => tag.id) || [],
+      status: experiment.status || "planning",
+      tag_ids: experiment.tags.map((tag) => tag.id),
     })
     setIsEditDialogOpen(true)
   }
 
+  // New function to handle tag creation from the TagSelector
   const handleCreateTagFromSelector = async (tagData: {
     name: string
     category: string
@@ -408,6 +416,7 @@ export default function ExperimentManager() {
       }
 
       if (existingTags && existingTags.length > 0) {
+        console.log("Tag already exists:", existingTags[0])
         return existingTags[0]
       }
 
@@ -433,9 +442,74 @@ export default function ExperimentManager() {
       // Refresh tags list
       await fetchTags()
       return data
-    } catch (error) {
-      console.error("Create tag error:", error)
+    } catch (err) {
+      console.error("Create tag error:", err)
       return null
+    }
+  }
+
+  const uploadFileToExperiment = async (file: File, experimentId: string, type: "protocol" | "data") => {
+    try {
+      setUploadingFiles((prev) => ({ ...prev, [experimentId]: true }))
+
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${user.id}/${experimentId}/${type}s/${Date.now()}.${fileExt}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("research-files")
+        .upload(fileName, file)
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        return null
+      }
+
+      const { data: urlData } = supabase.storage.from("research-files").getPublicUrl(fileName)
+
+      // Save file info to database
+      if (type === "protocol") {
+        // For protocols, we'll store in the protocols table with steps as JSON
+        const { error: dbError } = await supabase.from("protocols").insert([
+          {
+            experiment_id: experimentId,
+            steps: {
+              file_name: file.name,
+              file_url: urlData.publicUrl,
+              description: `Uploaded protocol: ${file.name}`,
+            },
+          },
+        ])
+
+        if (dbError) {
+          console.error("Database error:", dbError)
+          return null
+        }
+      } else {
+        // For data files, use the files table
+        const { error: dbError } = await supabase.from("files").insert([
+          {
+            experiment_id: experimentId,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            file_size: file.size,
+            description: `Uploaded data file: ${file.name}`,
+          },
+        ])
+
+        if (dbError) {
+          console.error("Database error:", dbError)
+          return null
+        }
+      }
+
+      fetchExperiments()
+      return urlData.publicUrl
+    } catch (err) {
+      console.error("File upload error:", err)
+      return null
+    } finally {
+      setUploadingFiles((prev) => ({ ...prev, [experimentId]: false }))
     }
   }
 
@@ -449,16 +523,16 @@ export default function ExperimentManager() {
     setTags([])
   }
 
-  const filteredExperiments = experiments.filter((experiment) => {
+  const filteredExperiments = experiments.filter((exp) => {
     const matchesSearch =
-      experiment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (experiment.description && experiment.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (experiment.researcher_name && experiment.researcher_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      exp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exp.description && exp.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (exp.researcher_name && exp.researcher_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    const matchesStatus = statusFilter === "all" || experiment.status === statusFilter
+    const matchesStatus = statusFilter === "all" || exp.status === statusFilter
 
     const matchesTags =
-      selectedTags.length === 0 || selectedTags.some((tagId) => experiment.tags?.some((tag) => tag.id === tagId))
+      selectedTags.length === 0 || selectedTags.some((tagId) => exp.tags.some((tag) => tag.id === tagId))
 
     return matchesSearch && matchesStatus && matchesTags
   })
@@ -548,7 +622,7 @@ export default function ExperimentManager() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {experiments.reduce((acc, exp) => acc + (exp.protocols?.length || 0), 0)}
+                {experiments.reduce((acc, exp) => acc + exp.protocols.length, 0)}
               </div>
             </CardContent>
           </Card>
@@ -558,9 +632,7 @@ export default function ExperimentManager() {
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {experiments.reduce((acc, exp) => acc + (exp.files?.length || 0), 0)}
-              </div>
+              <div className="text-2xl font-bold">{experiments.reduce((acc, exp) => acc + exp.files.length, 0)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -569,9 +641,7 @@ export default function ExperimentManager() {
               <FlaskConical className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {experiments.reduce((acc, exp) => acc + (exp.results?.length || 0), 0)}
-              </div>
+              <div className="text-2xl font-bold">{experiments.reduce((acc, exp) => acc + exp.results.length, 0)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -621,7 +691,7 @@ export default function ExperimentManager() {
                       <SelectItem value="on_hold">On Hold</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <Dialog open={isAddExperimentOpen} onOpenChange={setIsAddExperimentOpen}>
                     <DialogTrigger asChild>
                       <Button>
                         <Plus className="h-4 w-4 mr-2" />
@@ -633,13 +703,13 @@ export default function ExperimentManager() {
                         <DialogTitle>Add New Experiment</DialogTitle>
                         <DialogDescription>Create a new research experiment with tags and details</DialogDescription>
                       </DialogHeader>
-                      <form onSubmit={handleCreateExperiment} className="space-y-4">
+                      <form onSubmit={addExperiment} className="space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="title">Title</Label>
                           <Input
                             id="title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            value={newExperiment.title}
+                            onChange={(e) => setNewExperiment({ ...newExperiment, title: e.target.value })}
                             placeholder="Experiment title..."
                             required
                           />
@@ -648,8 +718,8 @@ export default function ExperimentManager() {
                           <Label htmlFor="researcher">Researcher Name</Label>
                           <Input
                             id="researcher"
-                            value={formData.researcher_name}
-                            onChange={(e) => setFormData({ ...formData, researcher_name: e.target.value })}
+                            value={newExperiment.researcher_name}
+                            onChange={(e) => setNewExperiment({ ...newExperiment, researcher_name: e.target.value })}
                             placeholder="Principal investigator..."
                           />
                         </div>
@@ -657,8 +727,8 @@ export default function ExperimentManager() {
                           <Label htmlFor="description">Description</Label>
                           <Textarea
                             id="description"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            value={newExperiment.description}
+                            onChange={(e) => setNewExperiment({ ...newExperiment, description: e.target.value })}
                             placeholder="Experiment description and objectives..."
                             rows={3}
                           />
@@ -667,8 +737,8 @@ export default function ExperimentManager() {
                           <Label htmlFor="protocol">Protocol</Label>
                           <Textarea
                             id="protocol"
-                            value={formData.protocol}
-                            onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
+                            value={newExperiment.protocol}
+                            onChange={(e) => setNewExperiment({ ...newExperiment, protocol: e.target.value })}
                             placeholder="Experimental protocol and methods..."
                             rows={3}
                           />
@@ -676,8 +746,8 @@ export default function ExperimentManager() {
                         <div className="space-y-2">
                           <Label htmlFor="status">Status</Label>
                           <Select
-                            value={formData.status}
-                            onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                            value={newExperiment.status}
+                            onValueChange={(value: any) => setNewExperiment({ ...newExperiment, status: value })}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -693,8 +763,8 @@ export default function ExperimentManager() {
 
                         <TagSelector
                           availableTags={tags}
-                          selectedTagIds={formData.tag_ids}
-                          onTagsChange={(tagIds) => setFormData({ ...formData, tag_ids: tagIds })}
+                          selectedTagIds={newExperiment.tag_ids}
+                          onTagsChange={(tagIds) => setNewExperiment({ ...newExperiment, tag_ids: tagIds })}
                           onCreateTag={handleCreateTagFromSelector}
                           getCategoryIcon={getCategoryIcon}
                         />
@@ -740,13 +810,13 @@ export default function ExperimentManager() {
                   <DialogTitle>Edit Experiment</DialogTitle>
                   <DialogDescription>Update your experiment details and tags</DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleEditExperiment} className="space-y-4">
+                <form onSubmit={updateExperiment} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-title">Title</Label>
                     <Input
                       id="edit-title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      value={editExperimentForm.title}
+                      onChange={(e) => setEditExperimentForm({ ...editExperimentForm, title: e.target.value })}
                       placeholder="Experiment title..."
                       required
                     />
@@ -755,8 +825,10 @@ export default function ExperimentManager() {
                     <Label htmlFor="edit-researcher">Researcher Name</Label>
                     <Input
                       id="edit-researcher"
-                      value={formData.researcher_name}
-                      onChange={(e) => setFormData({ ...formData, researcher_name: e.target.value })}
+                      value={editExperimentForm.researcher_name}
+                      onChange={(e) =>
+                        setEditExperimentForm({ ...editExperimentForm, researcher_name: e.target.value })
+                      }
                       placeholder="Principal investigator..."
                     />
                   </div>
@@ -764,8 +836,8 @@ export default function ExperimentManager() {
                     <Label htmlFor="edit-description">Description</Label>
                     <Textarea
                       id="edit-description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      value={editExperimentForm.description}
+                      onChange={(e) => setEditExperimentForm({ ...editExperimentForm, description: e.target.value })}
                       placeholder="Experiment description and objectives..."
                       rows={3}
                     />
@@ -774,8 +846,8 @@ export default function ExperimentManager() {
                     <Label htmlFor="edit-protocol">Protocol</Label>
                     <Textarea
                       id="edit-protocol"
-                      value={formData.protocol}
-                      onChange={(e) => setFormData({ ...formData, protocol: e.target.value })}
+                      value={editExperimentForm.protocol}
+                      onChange={(e) => setEditExperimentForm({ ...editExperimentForm, protocol: e.target.value })}
                       placeholder="Experimental protocol and methods..."
                       rows={3}
                     />
@@ -783,8 +855,8 @@ export default function ExperimentManager() {
                   <div className="space-y-2">
                     <Label htmlFor="edit-status">Status</Label>
                     <Select
-                      value={formData.status}
-                      onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                      value={editExperimentForm.status}
+                      onValueChange={(value: any) => setEditExperimentForm({ ...editExperimentForm, status: value })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -800,8 +872,8 @@ export default function ExperimentManager() {
 
                   <TagSelector
                     availableTags={tags}
-                    selectedTagIds={formData.tag_ids}
-                    onTagsChange={(tagIds) => setFormData({ ...formData, tag_ids: tagIds })}
+                    selectedTagIds={editExperimentForm.tag_ids}
+                    onTagsChange={(tagIds) => setEditExperimentForm({ ...editExperimentForm, tag_ids: tagIds })}
                     onCreateTag={handleCreateTagFromSelector}
                     getCategoryIcon={getCategoryIcon}
                   />
@@ -862,11 +934,11 @@ export default function ExperimentManager() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditDialog(experiment)}>
+                              <DropdownMenuItem onClick={() => handleEditExperiment(experiment)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
@@ -889,7 +961,7 @@ export default function ExperimentManager() {
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
-                                      onClick={() => handleDeleteExperiment(experiment.id)}
+                                      onClick={() => deleteExperiment(experiment.id)}
                                       className="bg-red-600 hover:bg-red-700"
                                     >
                                       Delete
@@ -915,7 +987,7 @@ export default function ExperimentManager() {
                       )}
 
                       {/* Tags */}
-                      {experiment.tags && experiment.tags.length > 0 && (
+                      {experiment.tags.length > 0 && (
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">Tags:</Label>
                           <div className="flex flex-wrap gap-2">
@@ -929,19 +1001,146 @@ export default function ExperimentManager() {
                         </div>
                       )}
 
-                      {/* File counts */}
-                      <div className="grid grid-cols-3 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <span>{experiment.protocols?.length || 0} Protocols</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Database className="h-4 w-4 text-green-600" />
-                          <span>{experiment.files?.length || 0} Files</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FlaskConical className="h-4 w-4 text-purple-600" />
-                          <span>{experiment.results?.length || 0} Results</span>
+                      {/* Files and Upload Section */}
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Protocols Section */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-blue-600" />
+                                Protocol Files ({experiment.protocols.length})
+                              </Label>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Upload Protocol File</DialogTitle>
+                                    <DialogDescription>Upload a protocol file for this experiment</DialogDescription>
+                                  </DialogHeader>
+                                  <FileUpload
+                                    onFileUpload={(file) => uploadFileToExperiment(file, experiment.id, "protocol")}
+                                    acceptedTypes=".pdf,.doc,.docx,.txt,.md"
+                                    maxSize={10}
+                                    label="Protocol File"
+                                    disabled={uploadingFiles[experiment.id]}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                            <div className="space-y-1">
+                              {experiment.protocols.map((protocol) => (
+                                <div
+                                  key={protocol.id}
+                                  className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded"
+                                >
+                                  <FileText className="h-3 w-3 text-blue-600" />
+                                  <span className="flex-1">
+                                    {protocol.steps?.file_name || `Protocol ${protocol.id.slice(0, 8)}`}
+                                  </span>
+                                  {protocol.steps?.file_url && (
+                                    <Button variant="ghost" size="sm" asChild>
+                                      <a href={protocol.steps.file_url} target="_blank" rel="noopener noreferrer">
+                                        <Download className="h-3 w-3" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                              {experiment.protocols.length === 0 && (
+                                <p className="text-xs text-gray-500">No protocol files uploaded</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Data Files Section */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                <Database className="h-4 w-4 text-green-600" />
+                                Data Files ({experiment.files.length})
+                              </Label>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Upload Data File</DialogTitle>
+                                    <DialogDescription>Upload a data file for this experiment</DialogDescription>
+                                  </DialogHeader>
+                                  <FileUpload
+                                    onFileUpload={(file) => uploadFileToExperiment(file, experiment.id, "data")}
+                                    acceptedTypes=".csv,.xlsx,.json,.txt,.tsv"
+                                    maxSize={50}
+                                    label="Data File"
+                                    disabled={uploadingFiles[experiment.id]}
+                                  />
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                            <div className="space-y-1">
+                              {experiment.files.map((dataFile) => (
+                                <div
+                                  key={dataFile.id}
+                                  className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded"
+                                >
+                                  <Database className="h-3 w-3 text-green-600" />
+                                  <span className="flex-1">{dataFile.file_name}</span>
+                                  <span className="text-xs text-gray-500">
+                                    {dataFile.file_size ? (dataFile.file_size / 1024 / 1024).toFixed(2) + " MB" : ""}
+                                  </span>
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <a href={dataFile.file_url} target="_blank" rel="noopener noreferrer">
+                                      <Download className="h-3 w-3" />
+                                    </a>
+                                  </Button>
+                                </div>
+                              ))}
+                              {experiment.files.length === 0 && (
+                                <p className="text-xs text-gray-500">No data files uploaded</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Results Section */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                <FlaskConical className="h-4 w-4 text-purple-600" />
+                                Results ({experiment.results.length})
+                              </Label>
+                            </div>
+                            <div className="space-y-1">
+                              {experiment.results.map((result) => (
+                                <div
+                                  key={result.id}
+                                  className="flex items-center gap-2 text-sm p-2 bg-purple-50 rounded"
+                                >
+                                  <FlaskConical className="h-3 w-3 text-purple-600" />
+                                  <span className="flex-1">Result {result.id.slice(0, 8)}</span>
+                                  {result.file_url && (
+                                    <Button variant="ghost" size="sm" asChild>
+                                      <a href={result.file_url} target="_blank" rel="noopener noreferrer">
+                                        <Download className="h-3 w-3" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                              {experiment.results.length === 0 && (
+                                <p className="text-xs text-gray-500">No results recorded</p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -1009,3 +1208,4 @@ export default function ExperimentManager() {
     </div>
   )
 }
+
