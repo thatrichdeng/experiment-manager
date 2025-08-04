@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@supabase/supabase-js"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,35 +11,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User, LogOut, Settings } from "lucide-react"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vnrbidtckiaxljjzmxul.supabase.co",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZucmJpZHRja2lheGxqanpteHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTM2NzAsImV4cCI6MjA2OTA2OTY3MH0._WO1fuFuFUXvlL6Gsz14CsyxbJzqztdv435FAVslg6I",
-)
+import { User, Settings, LogOut, ChevronDown } from "lucide-react"
 
 interface UserProfileProps {
   user: any
   onSignOut: () => void
 }
 
-export default function UserProfile({ user, onSignOut }: UserProfileProps) {
-  const [loading, setLoading] = useState(false)
+export function UserProfile({ user, onSignOut }: UserProfileProps) {
+  const [isOpen, setIsOpen] = useState(false)
 
-  const handleSignOut = async () => {
-    setLoading(true)
-    try {
-      await supabase.auth.signOut()
-      onSignOut()
-    } catch (error) {
-      console.error("Error signing out:", error)
-    } finally {
-      setLoading(false)
+  const getUserDisplayName = () => {
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name
     }
+    if (user?.email) {
+      return user.email.split("@")[0]
+    }
+    return "User"
   }
 
-  const getInitials = (name: string) => {
+  const getUserInitials = () => {
+    const name = getUserDisplayName()
     return name
       .split(" ")
       .map((n) => n[0])
@@ -49,37 +41,36 @@ export default function UserProfile({ user, onSignOut }: UserProfileProps) {
       .slice(0, 2)
   }
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"
-
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-blue-600 text-white">{getInitials(displayName)}</AvatarFallback>
+        <Button variant="ghost" className="flex items-center gap-2 h-auto p-2">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder.svg"} />
+            <AvatarFallback className="bg-blue-600 text-white text-sm">{getUserInitials()}</AvatarFallback>
           </Avatar>
+          <div className="flex flex-col items-start">
+            <span className="text-sm font-medium">{getUserDisplayName()}</span>
+            <span className="text-xs text-gray-500">{user?.email}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-gray-500" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-          </div>
-        </DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem>
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} disabled={loading}>
+        <DropdownMenuItem onClick={onSignOut} className="text-red-600">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>{loading ? "Signing out..." : "Sign out"}</span>
+          <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

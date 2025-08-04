@@ -1,300 +1,201 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Search, X } from "lucide-react"
+import { X, Plus, LucideTag } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
+import { toast } from "sonner"
+
+const supabase = createClient(
+  "https://vnrbidtckiaxljjzmxul.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZucmJpZHRja2lheGxqanpteHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTM2NzAsImV4cCI6MjA2OTA2OTY3MH0._WO1fuFuFUXvlL6Gsz14CsyxbJzqztdv435FAVslg6I",
+)
 
 interface Tag {
   id: string
   name: string
-  category: "organism" | "reagent" | "technique" | "equipment" | "other"
+  category: string
   color: string
 }
 
 interface TagSelectorProps {
-  availableTags: Tag[]
-  selectedTagIds: string[]
+  tags: Tag[]
+  selectedTags: string[]
   onTagsChange: (tagIds: string[]) => void
-  onCreateTag: (tag: { name: string; category: string; color: string }) => Promise<Tag | null>
-  getCategoryIcon: (category: string) => React.ReactNode
 }
 
-export default function TagSelector({
-  availableTags,
-  selectedTagIds,
-  onTagsChange,
-  onCreateTag,
-  getCategoryIcon,
-}: TagSelectorProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [creatingTag, setCreatingTag] = useState(false)
-  const [newTagForm, setNewTagForm] = useState({
-    name: "",
-    category: "other" as const,
-    color: "#3B82F6",
-  })
+const categoryColors = {
+  methodology: "#3B82F6",
+  field: "#10B981",
+  type: "#F59E0B",
+  design: "#EF4444",
+  general: "#6B7280",
+}
 
-  const searchInputRef = useRef<HTMLInputElement>(null)
+const categories = [
+  { value: "methodology", label: "Methodology" },
+  { value: "field", label: "Field" },
+  { value: "type", label: "Type" },
+  { value: "design", label: "Design" },
+  { value: "general", label: "General" },
+]
 
-  // Filter tags based on search term
-  const filteredTags = availableTags.filter((tag) => tag.name.toLowerCase().includes(searchTerm.toLowerCase()))
+export function TagSelector({ tags, selectedTags, onTagsChange }: TagSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [newTagName, setNewTagName] = useState("")
+  const [newTagCategory, setNewTagCategory] = useState("general")
+  const [isCreating, setIsCreating] = useState(false)
 
-  // Check if search term matches any existing tag exactly
-  const exactMatch = availableTags.find((tag) => tag.name.toLowerCase() === searchTerm.toLowerCase().trim())
+  const selectedTagObjects = tags.filter((tag) => selectedTags.includes(tag.id))
+  const availableTags = tags.filter((tag) => !selectedTags.includes(tag.id))
 
-  // Show create option if there's a search term and no exact match
-  const showCreateOption = searchTerm.trim() && !exactMatch
+  const handleTagSelect = (tagId: string) => {
+    onTagsChange([...selectedTags, tagId])
+  }
 
-  const handleTagToggle = (tagId: string) => {
-    const newSelectedIds = selectedTagIds.includes(tagId)
-      ? selectedTagIds.filter((id) => id !== tagId)
-      : [...selectedTagIds, tagId]
-    onTagsChange(newSelectedIds)
+  const handleTagRemove = (tagId: string) => {
+    onTagsChange(selectedTags.filter((id) => id !== tagId))
   }
 
   const handleCreateTag = async () => {
-    if (!newTagForm.name.trim()) return
+    if (!newTagName.trim()) return
 
-    setCreatingTag(true)
+    setIsCreating(true)
     try {
-      const createdTag = await onCreateTag({
-        name: newTagForm.name.trim(),
-        category: newTagForm.category,
-        color: newTagForm.color,
-      })
+      const { data: currentUser } = await supabase.auth.getUser()
+      if (!currentUser.user) {
+        toast.error("You must be logged in to create tags")
+        return
+      }
 
-      if (createdTag) {
-        // Add the new tag to selection
-        onTagsChange([...selectedTagIds, createdTag.id])
-
-        // Reset form
-        setNewTagForm({
-          name: "",
-          category: "other",
-          color: "#3B82F6",
+      const { data, error } = await supabase
+        .from("tags")
+        .insert({
+          name: newTagName.trim(),
+          category: newTagCategory,
+          color: categoryColors[newTagCategory as keyof typeof categoryColors],
+          user_id: currentUser.user.id,
         })
-        setSearchTerm("")
-        setShowCreateForm(false)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      toast.success("Tag created successfully")
+      setNewTagName("")
+      setNewTagCategory("general")
+      setIsOpen(false)
+
+      // Add the new tag to selection
+      if (data) {
+        onTagsChange([...selectedTags, data.id])
       }
-    } catch (error) {
+
+      // Refresh tags list (in a real app, you'd update the parent component)
+      window.location.reload()
+    } catch (error: any) {
       console.error("Error creating tag:", error)
+      toast.error("Failed to create tag")
     } finally {
-      setCreatingTag(false)
+      setIsCreating(false)
     }
   }
-
-  const handleQuickCreate = async () => {
-    if (!searchTerm.trim()) return
-
-    setCreatingTag(true)
-    try {
-      const createdTag = await onCreateTag({
-        name: searchTerm.trim(),
-        category: "other",
-        color: "#3B82F6",
-      })
-
-      if (createdTag) {
-        onTagsChange([...selectedTagIds, createdTag.id])
-        setSearchTerm("")
-      }
-    } catch (error) {
-      console.error("Error creating tag:", error)
-    } finally {
-      setCreatingTag(false)
-    }
-  }
-
-  const selectedTags = availableTags.filter((tag) => selectedTagIds.includes(tag.id))
 
   return (
-    <div className="space-y-3">
-      <Label>Tags ({selectedTagIds.length} selected)</Label>
-
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          ref={searchInputRef}
-          placeholder="Search tags or type to create new..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Selected Tags Display */}
-      {selectedTags.length > 0 && (
-        <div className="space-y-2">
-          <Label className="text-sm text-gray-600">Selected:</Label>
-          <div className="flex flex-wrap gap-2">
-            {selectedTags.map((tag) => (
-              <Badge key={tag.id} style={{ backgroundColor: tag.color }} className="text-white pr-1">
-                {getCategoryIcon(tag.category)}
-                <span className="ml-1">{tag.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 ml-1 hover:bg-white/20"
-                  onClick={() => handleTagToggle(tag.id)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
-            ))}
-          </div>
+    <div className="space-y-2">
+      {/* Selected Tags */}
+      {selectedTagObjects.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {selectedTagObjects.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="secondary"
+              style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+              className="flex items-center gap-1"
+            >
+              <LucideTag className="h-3 w-3" />
+              {tag.name}
+              <button onClick={() => handleTagRemove(tag.id)} className="ml-1 hover:bg-black/10 rounded-full p-0.5">
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
         </div>
       )}
 
-      {/* Available Tags */}
-      <div className="space-y-2">
-        <Label className="text-sm text-gray-600">Available tags:</Label>
-        <div className="max-h-32 overflow-y-auto border rounded-md p-2 bg-gray-50">
-          {filteredTags.length === 0 && !showCreateOption ? (
-            <p className="text-sm text-gray-500 p-2">
-              {searchTerm ? "No tags found matching your search" : "No tags available"}
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {filteredTags.map((tag) => {
-                const isSelected = selectedTagIds.includes(tag.id)
-                return (
-                  <Badge
-                    key={tag.id}
-                    variant={isSelected ? "default" : "outline"}
-                    className="cursor-pointer hover:opacity-80 transition-all"
-                    style={{
-                      backgroundColor: isSelected ? tag.color : "transparent",
-                      color: isSelected ? "white" : tag.color,
-                      borderColor: tag.color,
-                      borderWidth: "1px",
-                    }}
-                    onClick={() => handleTagToggle(tag.id)}
-                  >
-                    {getCategoryIcon(tag.category)}
-                    <span className="ml-1">{tag.name}</span>
-                    {isSelected && <span className="ml-1">✓</span>}
-                  </Badge>
-                )
-              })}
-
-              {/* Quick Create Option */}
-              {showCreateOption && (
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-green-50 border-green-500 text-green-700 border-dashed"
-                  onClick={handleQuickCreate}
-                >
-                  <Plus className="h-3 w-3" />
-                  <span className="ml-1">{creatingTag ? "Creating..." : `Create "${searchTerm}"`}</span>
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Advanced Create Form */}
-      <div className="space-y-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {showCreateForm ? "Cancel" : "Create New Tag (Advanced)"}
-        </Button>
-
-        {showCreateForm && (
-          <div className="border rounded-md p-3 bg-gray-50 space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="new-tag-name" className="text-sm">
-                Tag Name
-              </Label>
-              <Input
-                id="new-tag-name"
-                placeholder="Enter tag name..."
-                value={newTagForm.name}
-                onChange={(e) => setNewTagForm({ ...newTagForm, name: e.target.value })}
-                disabled={creatingTag}
-              />
+      {/* Tag Selector */}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Tags
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80" align="start">
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Available Tags</Label>
+              <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                {availableTags.length > 0 ? (
+                  availableTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleTagSelect(tag.id)}
+                      className="w-full text-left p-2 hover:bg-gray-50 rounded flex items-center gap-2"
+                    >
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
+                      <span className="text-sm">{tag.name}</span>
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        {tag.category}
+                      </Badge>
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 p-2">No available tags</p>
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Label htmlFor="new-tag-category" className="text-sm">
-                  Category
-                </Label>
-                <Select
-                  value={newTagForm.category}
-                  onValueChange={(value: any) => setNewTagForm({ ...newTagForm, category: value })}
-                  disabled={creatingTag}
-                >
+            <div className="border-t pt-4">
+              <Label className="text-sm font-medium">Create New Tag</Label>
+              <div className="mt-2 space-y-2">
+                <Input placeholder="Tag name" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} />
+                <Select value={newTagCategory} onValueChange={setNewTagCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="organism">Organism</SelectItem>
-                    <SelectItem value="reagent">Reagent</SelectItem>
-                    <SelectItem value="technique">Technique</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: categoryColors[category.value as keyof typeof categoryColors] }}
+                          />
+                          {category.label}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="new-tag-color" className="text-sm">
-                  Color
-                </Label>
-                <Input
-                  id="new-tag-color"
-                  type="color"
-                  value={newTagForm.color}
-                  onChange={(e) => setNewTagForm({ ...newTagForm, color: e.target.value })}
-                  className="w-16 h-10"
-                  disabled={creatingTag}
-                />
+                <Button
+                  onClick={handleCreateTag}
+                  disabled={!newTagName.trim() || isCreating}
+                  size="sm"
+                  className="w-full"
+                >
+                  {isCreating ? "Creating..." : "Create Tag"}
+                </Button>
               </div>
             </div>
-
-            <Button
-              type="button"
-              onClick={handleCreateTag}
-              disabled={!newTagForm.name.trim() || creatingTag}
-              className="w-full"
-              size="sm"
-            >
-              {creatingTag ? "Creating..." : "Create Tag"}
-            </Button>
           </div>
-        )}
-      </div>
-
-      {/* Help Text */}
-      <div className="text-xs text-gray-500">
-        {searchTerm ? (
-          showCreateOption ? (
-            <>
-              Search results for "{searchTerm}". Click the dashed badge to create it quickly, or use advanced form
-              below.
-            </>
-          ) : (
-            <>Showing tags matching "{searchTerm}"</>
-          )
-        ) : (
-          <>Search for existing tags or type a new name to create one</>
-        )}
-      </div>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
