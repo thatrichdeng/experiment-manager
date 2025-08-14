@@ -10,12 +10,14 @@ create table if not exists experiment_shares (
 alter table experiment_shares enable row level security;
 
 -- Allow experiment owners to share with other users
+drop policy if exists "Owners can share experiments" on experiment_shares;
 create policy "Owners can share experiments" on experiment_shares
 for insert with check (
     auth.uid() = (select user_id from experiments where id = experiment_id)
 );
 
 -- Allow owners and recipients to view share records
+drop policy if exists "View share records" on experiment_shares;
 create policy "View share records" on experiment_shares
 for select using (
     auth.uid() = (select user_id from experiments where id = experiment_id)
@@ -23,6 +25,7 @@ for select using (
 );
 
 -- Allow owners to remove shares
+drop policy if exists "Owners can remove shares" on experiment_shares;
 create policy "Owners can remove shares" on experiment_shares
 for delete using (
     auth.uid() = (select user_id from experiments where id = experiment_id)
