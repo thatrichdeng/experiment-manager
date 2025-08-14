@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Plus, Search, FileText, Database, TagIcon, Calendar, User, Beaker, Microscope, FlaskConical, Edit, Trash2, MoreHorizontal, Download, Upload } from 'lucide-react'
+import { Plus, Search, FileText, Database, TagIcon, Calendar, User, Beaker, Microscope, FlaskConical, Edit, Trash2, MoreHorizontal, Download, Upload, Share2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 // Import components
@@ -87,6 +87,10 @@ export default function ResearchPlatform() {
   const [isAddExperimentOpen, setIsAddExperimentOpen] = useState(false)
   const [editingExperiment, setEditingExperiment] = useState<Experiment | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [shareExperiment, setShareExperiment] = useState<Experiment | null>(null)
+  const [shareUserId, setShareUserId] = useState("")
 
   const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({})
 
@@ -160,7 +164,7 @@ export default function ResearchPlatform() {
     try {
       setLoading(true)
 
-      // Fetch experiments for the current user
+      // Fetch experiments owned by the current user
       const { data: experimentsData, error: experimentsError } = await supabase
         .from("experiments")
         .select("*")
@@ -172,9 +176,23 @@ export default function ResearchPlatform() {
         return
       }
 
+      // Fetch experiments shared with the current user
+      const { data: sharedData, error: sharedError } = await supabase
+        .from("experiment_shares")
+        .select("experiment:experiments(*)")
+        .eq("user_id", user.id)
+
+      if (sharedError) {
+        console.error("Error fetching shared experiments:", sharedError)
+        return
+      }
+
+      const sharedExperiments = (sharedData || []).map((item: any) => item.experiment)
+      const allExperiments = [...(experimentsData || []), ...sharedExperiments]
+
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        (experimentsData || []).map(async (exp) => {
+        allExperiments.map(async (exp) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -430,6 +448,31 @@ export default function ResearchPlatform() {
       fetchExperiments()
     } catch (err) {
       console.error("Delete experiment error:", err)
+      alert("An unexpected error occurred. Please try again.")
+    }
+  }
+
+  const shareCurrentExperiment = async () => {
+    if (!user || !shareExperiment || !shareUserId.trim()) return
+
+    try {
+      const { error } = await supabase.from("experiment_shares").insert({
+        experiment_id: shareExperiment.id,
+        user_id: shareUserId.trim(),
+      })
+
+      if (error) {
+        console.error("Error sharing experiment:", error)
+        alert("Failed to share experiment. Please try again.")
+        return
+      }
+
+      setIsShareDialogOpen(false)
+      setShareUserId("")
+      setShareExperiment(null)
+      fetchExperiments()
+    } catch (err) {
+      console.error("Share experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
     }
   }
@@ -956,6 +999,29 @@ export default function ResearchPlatform() {
               </DialogContent>
             </Dialog>
 
+            {/* Share Experiment Dialog */}
+            <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Share Experiment</DialogTitle>
+                  <DialogDescription>Enter the user ID of the person to share this experiment with.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="User ID"
+                    value={shareUserId}
+                    onChange={(e) => setShareUserId(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={shareCurrentExperiment}>Share</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Experiments List */}
             <div className="space-y-4">
               {loading ? (
@@ -992,46 +1058,57 @@ export default function ResearchPlatform() {
                           <Badge className={getStatusColor(experiment.status || "planning")}>
                             {(experiment.status || "planning").replace("_", " ")}
                           </Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditExperiment(experiment)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the experiment "
-                                      {experiment.title}" and all associated data including protocols, files, and
-                                      results.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteExperiment(experiment.id)}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
+                          {experiment.user_id === user?.id && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditExperiment(experiment)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setShareExperiment(experiment)
+                                    setIsShareDialogOpen(true)
+                                  }}
+                                >
+                                  <Share2 className="h-4 w-4 mr-2" />
+                                  Share
+                                </DropdownMenuItem>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                      <Trash2 className="h-4 w-4 mr-2" />
                                       Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the experiment "
+                                        {experiment.title}" and all associated data including protocols, files, and
+                                        results.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteExperiment(experiment.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                     </CardHeader>
