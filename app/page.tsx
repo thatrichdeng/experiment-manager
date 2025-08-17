@@ -163,16 +163,20 @@ export default function ResearchPlatform() {
         shared: false,
       }))
 
-      const sharedExperiments = (sharedData || []).map((item: any) => ({
-        ...item.experiment,
-        shared: true,
-      }))
+      const sharedExperiments = (sharedData || [])
+        .filter((item: any) => item.experiment)
+        .map((item: any) => ({
+          ...item.experiment,
+          shared: true,
+        }))
 
-      const allExperiments = [...ownedExperiments, ...sharedExperiments]
+      const validExperiments = [...ownedExperiments, ...sharedExperiments].filter(
+        (exp) => exp && exp.id,
+      )
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        allExperiments.map(async (exp) => {
+        validExperiments.map(async (exp) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -678,7 +682,7 @@ export default function ResearchPlatform() {
 
   const filteredExperiments = experiments.filter((exp) => {
     const matchesSearch =
-      exp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exp.title && exp.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (exp.description && exp.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (exp.researcher_name && exp.researcher_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
