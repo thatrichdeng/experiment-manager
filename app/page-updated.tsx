@@ -336,15 +336,19 @@ export default function ResearchPlatform() {
   }
 
   const uploadFileToExperiment = async (file: File, experimentId: number, type: "protocol" | "data") => {
+    if (!user) {
+      console.error("User not authenticated")
+      return null
+    }
     try {
       setUploadingFiles((prev) => ({ ...prev, [experimentId]: true }))
 
       const fileExt = file.name.split(".").pop()
       const fileName = `${user.id}/${experimentId}/${type}s/${Date.now()}.${fileExt}`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("research-files")
-        .upload(fileName, file)
+        .upload(fileName, file, { contentType: file.type, upsert: true })
 
       if (uploadError) {
         console.error("Upload error:", uploadError)
