@@ -149,27 +149,46 @@ export default function ResearchPlatform() {
           }
 
           // Fetch protocols for this experiment
-          const { data: protocolData } = await supabase.from("protocols").select("*").eq("experiment_id", exp.id)
+          const { data: protocolData } = await supabase
+            .from("protocols")
+            .select("*")
+            .eq("experiment_id", exp.id)
 
           // Fetch files for this experiment (using your 'files' table instead of 'data_files')
-          const { data: fileData } = await supabase.from("files").select("*").eq("experiment_id", exp.id)
+          const { data: fileData } = await supabase
+            .from("files")
+            .select("*")
+            .eq("experiment_id", exp.id)
 
           // Fetch results if the table exists
-          let resultsData = []
+          let resultsData: any[] = []
           try {
-            const { data } = await supabase.from("results").select("*").eq("experiment_id", exp.id)
+            const { data } = await supabase
+              .from("results")
+              .select("*")
+              .eq("experiment_id", exp.id)
             resultsData = data || []
           } catch (error) {
             // Results table might not exist, that's okay
             resultsData = []
           }
 
+          const mapWithUrl = (items: any[] | null | undefined) =>
+            (items || []).map((item) => ({
+              ...item,
+              file_url: item.file_path
+                ? supabase.storage
+                    .from("research-files")
+                    .getPublicUrl(item.file_path).data.publicUrl
+                : null,
+            }))
+
           return {
             ...exp,
             tags: tagData?.map((item: any) => item.tags).filter(Boolean) || [],
-            protocols: protocolData || [],
-            files: fileData || [], // Using 'files' instead of 'data_files'
-            results: resultsData,
+            protocols: mapWithUrl(protocolData),
+            files: mapWithUrl(fileData), // Using 'files' instead of 'data_files'
+            results: mapWithUrl(resultsData),
           }
         }),
       )
@@ -335,33 +354,44 @@ export default function ResearchPlatform() {
     }
   }
 
-  const uploadFileToExperiment = async (file: File, experimentId: number, type: "protocol" | "data") => {
+  const uploadFileToExperiment = async (
+    file: File,
+    experimentId: number,
+    type: "protocol" | "data",
+  ) => {
+    if (!user) {
+      console.error("User not authenticated")
+      return null
+    }
     try {
       setUploadingFiles((prev) => ({ ...prev, [experimentId]: true }))
 
       const fileExt = file.name.split(".").pop()
       const fileName = `${user.id}/${experimentId}/${type}s/${Date.now()}.${fileExt}`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("research-files")
-        .upload(fileName, file)
+        .upload(fileName, file, { contentType: file.type, upsert: true })
 
       if (uploadError) {
         console.error("Upload error:", uploadError)
         return null
       }
 
-      const { data: urlData } = supabase.storage.from("research-files").getPublicUrl(fileName)
+      const { data: urlData } = supabase.storage
+        .from("research-files")
+        .getPublicUrl(fileName)
 
       // Save file info to database
       if (type === "protocol") {
         const { error: dbError } = await supabase.from("protocols").insert([
           {
             experiment_id: experimentId,
-            title: file.name,
-            description: `Uploaded protocol: ${file.name}`,
-            file_url: urlData.publicUrl,
-            file_name: file.name,
+            name: file.name,
+            file_path: fileName,
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
           },
         ])
 
@@ -370,15 +400,15 @@ export default function ResearchPlatform() {
           return null
         }
       } else {
-        // Use your 'files' table instead of 'data_files'
         const { error: dbError } = await supabase.from("files").insert([
           {
             experiment_id: experimentId,
-            file_name: file.name,
-            file_url: urlData.publicUrl,
-            file_type: file.type,
+            name: file.name,
+            file_path: fileName,
+            file_type: "data",
             file_size: file.size,
-            description: `Uploaded data file: ${file.name}`,
+            filename: file.name,
+            mime_type: file.type,
           },
         ])
 
@@ -830,9 +860,11 @@ export default function ResearchPlatform() {
                                   className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded"
                                 >
                                   <Database className="h-3 w-3 text-green-600" />
-                                  <span className="flex-1">{dataFile.file_name}</span>
+                                  <span className="flex-1">{dataFile.filename || dataFile.name}</span>
                                   <span className="text-xs text-gray-500">
-                                    {dataFile.file_size ? (dataFile.file_size / 1024 / 1024).toFixed(2) + " MB" : ""}
+                                    {dataFile.file_size
+                                      ? (dataFile.file_size / 1024 / 1024).toFixed(2) + " MB"
+                                      : ""}
                                   </span>
                                   <Button variant="ghost" size="sm" asChild>
                                     <a href={dataFile.file_url} target="_blank" rel="noopener noreferrer">

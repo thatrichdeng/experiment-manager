@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Upload, File, X, CheckCircle } from "lucide-react"
+import { Upload, File as FileIcon, X, CheckCircle } from "lucide-react"
 
 interface FileUploadProps {
   onFileUpload: (file: File) => Promise<any>
@@ -112,7 +112,7 @@ export function FileUpload({
 
       {selectedFile && (
         <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-          <File className="h-4 w-4 text-gray-600" />
+          <FileIcon className="h-4 w-4 text-gray-600" />
           <span className="flex-1 text-sm">{selectedFile.name}</span>
           <span className="text-xs text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
           {!uploading && !uploadComplete && (
