@@ -121,3 +121,19 @@ for select using (
         where et.tag_id = tags.id and es.user_id = auth.uid()
     )
 );
+
+-- Helper function to lookup a user id by email
+create or replace function get_user_id_by_email(user_email text)
+returns uuid
+language sql
+security definer
+set search_path = auth
+as $$
+  select id from users where email = user_email;
+$$;
+
+grant execute on function get_user_id_by_email to authenticated;
+
+-- Allow experiments to store a custom experiment date
+alter table experiments
+  add column if not exists experiment_date date default now();

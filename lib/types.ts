@@ -16,6 +16,7 @@ export interface Experiment {
   protocol?: string;
   status?: "planning" | "in_progress" | "completed" | "on_hold";
   visibility?: string;
+  experiment_date?: string;
   created_at: string;
   updated_at?: string;
   tags: any[];
