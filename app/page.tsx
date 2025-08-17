@@ -202,6 +202,7 @@ export default function ResearchPlatform() {
 
           return {
             ...exp,
+            shared: exp.user_id !== user.id,
             tags: tagData?.map((item: any) => item.tags).filter(Boolean) || [],
             protocols: mapWithUrl(protocolData),
             files: mapWithUrl(fileData),
@@ -1117,6 +1118,11 @@ export default function ResearchPlatform() {
                           <Badge className={getStatusColor(experiment.status || "planning")}>
                             {(experiment.status || "planning").replace("_", " ")}
                           </Badge>
+                          {experiment.shared && (
+                            <Badge className="bg-purple-100 text-purple-800">
+                              Shared
+                            </Badge>
+                          )}
                           {experiment.user_id === user?.id && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
