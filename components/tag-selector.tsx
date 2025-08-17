@@ -9,13 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, X } from "lucide-react"
-
-interface Tag {
-  id: string
-  name: string
-  category: "organism" | "reagent" | "technique" | "equipment" | "other"
-  color: string
-}
+import type { Tag } from "@/lib/types"
 
 interface TagSelectorProps {
   availableTags: Tag[]
