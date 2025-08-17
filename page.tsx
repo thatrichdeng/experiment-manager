@@ -197,20 +197,39 @@ export default function ResearchPlatform() {
             .eq("experiment_id", exp.id)
 
           // Fetch protocols for this experiment
-          const { data: protocolData } = await supabase.from("protocols").select("*").eq("experiment_id", exp.id)
+          const { data: protocolData } = await supabase
+            .from("protocols")
+            .select("*")
+            .eq("experiment_id", exp.id)
 
           // Fetch files for this experiment
-          const { data: fileData } = await supabase.from("files").select("*").eq("experiment_id", exp.id)
+          const { data: fileData } = await supabase
+            .from("files")
+            .select("*")
+            .eq("experiment_id", exp.id)
 
           // Fetch results for this experiment
-          const { data: resultsData } = await supabase.from("results").select("*").eq("experiment_id", exp.id)
+          const { data: resultsData } = await supabase
+            .from("results")
+            .select("*")
+            .eq("experiment_id", exp.id)
+
+          const mapWithUrl = (items: any[] | null | undefined) =>
+            (items || []).map((item) => ({
+              ...item,
+              file_url: item.file_path
+                ? supabase.storage
+                    .from("research-files")
+                    .getPublicUrl(item.file_path).data.publicUrl
+                : null,
+            }))
 
           return {
             ...exp,
             tags: tagData?.map((item: any) => item.tags).filter(Boolean) || [],
-            protocols: protocolData || [],
-            files: fileData || [],
-            results: resultsData || [],
+            protocols: mapWithUrl(protocolData),
+            files: mapWithUrl(fileData),
+            results: mapWithUrl(resultsData),
           }
         }),
       )
@@ -448,7 +467,11 @@ export default function ResearchPlatform() {
     }
   }
 
-  const uploadFileToExperiment = async (file: File, experimentId: string, type: "protocol" | "data") => {
+  const uploadFileToExperiment = async (
+    file: File,
+    experimentId: string,
+    type: "protocol" | "data",
+  ) => {
     if (!user) {
       console.error("User not authenticated")
       return null
@@ -468,19 +491,20 @@ export default function ResearchPlatform() {
         return null
       }
 
-      const { data: urlData } = supabase.storage.from("research-files").getPublicUrl(fileName)
+      const { data: urlData } = supabase.storage
+        .from("research-files")
+        .getPublicUrl(fileName)
 
       // Save file info to database
       if (type === "protocol") {
-        // For protocols, we'll store in the protocols table with steps as JSON
         const { error: dbError } = await supabase.from("protocols").insert([
           {
             experiment_id: experimentId,
-            steps: {
-              file_name: file.name,
-              file_url: urlData.publicUrl,
-              description: `Uploaded protocol: ${file.name}`,
-            },
+            name: file.name,
+            file_path: fileName,
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
           },
         ])
 
@@ -489,15 +513,15 @@ export default function ResearchPlatform() {
           return null
         }
       } else {
-        // For data files, use the files table
         const { error: dbError } = await supabase.from("files").insert([
           {
             experiment_id: experimentId,
-            file_name: file.name,
-            file_url: urlData.publicUrl,
-            file_type: file.type,
+            name: file.name,
+            file_path: fileName,
+            file_type: "data",
             file_size: file.size,
-            description: `Uploaded data file: ${file.name}`,
+            filename: file.name,
+            mime_type: file.type,
           },
         ])
 
@@ -1045,11 +1069,11 @@ export default function ResearchPlatform() {
                                 >
                                   <FileText className="h-3 w-3 text-blue-600" />
                                   <span className="flex-1">
-                                    {protocol.steps?.file_name || `Protocol ${protocol.id.slice(0, 8)}`}
+                                    {protocol.filename || protocol.name || `Protocol ${protocol.id.slice(0, 8)}`}
                                   </span>
-                                  {protocol.steps?.file_url && (
+                                  {protocol.file_url && (
                                     <Button variant="ghost" size="sm" asChild>
-                                      <a href={protocol.steps.file_url} target="_blank" rel="noopener noreferrer">
+                                      <a href={protocol.file_url} target="_blank" rel="noopener noreferrer">
                                         <Download className="h-3 w-3" />
                                       </a>
                                     </Button>
@@ -1098,9 +1122,11 @@ export default function ResearchPlatform() {
                                   className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded"
                                 >
                                   <Database className="h-3 w-3 text-green-600" />
-                                  <span className="flex-1">{dataFile.file_name}</span>
+                                  <span className="flex-1">{dataFile.filename || dataFile.name}</span>
                                   <span className="text-xs text-gray-500">
-                                    {dataFile.file_size ? (dataFile.file_size / 1024 / 1024).toFixed(2) + " MB" : ""}
+                                    {dataFile.file_size
+                                      ? (dataFile.file_size / 1024 / 1024).toFixed(2) + " MB"
+                                      : ""}
                                   </span>
                                   <Button variant="ghost" size="sm" asChild>
                                     <a href={dataFile.file_url} target="_blank" rel="noopener noreferrer">
