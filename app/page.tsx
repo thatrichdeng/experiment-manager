@@ -158,12 +158,25 @@ export default function ResearchPlatform() {
         return
       }
 
-      const sharedExperiments = (sharedData || []).map((item: any) => item.experiment)
-      const allExperiments = [...(experimentsData || []), ...sharedExperiments]
+      const ownedExperiments = (experimentsData || []).map((exp: any) => ({
+        ...exp,
+        shared: false,
+      }))
+
+      const sharedExperiments = (sharedData || [])
+        .filter((item: any) => item.experiment)
+        .map((item: any) => ({
+          ...item.experiment,
+          shared: true,
+        }))
+
+      const validExperiments = [...ownedExperiments, ...sharedExperiments].filter(
+        (exp) => exp && exp.id,
+      )
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        allExperiments.map(async (exp) => {
+        validExperiments.map(async (exp) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -312,7 +325,7 @@ export default function ResearchPlatform() {
         }
       }
 
-      // Upload protocol files
+      const protocolEntries: any[] = []
       for (const file of newExperiment.protocolFiles) {
         const uploadResult = await uploadFileToStorage(
           file,
@@ -330,10 +343,19 @@ export default function ResearchPlatform() {
               mime_type: file.type,
             },
           ])
+          protocolEntries.push({
+            experiment_id: experimentData.id,
+            name: file.name,
+            file_path: uploadResult.fileName,
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
+            file_url: uploadResult.publicUrl,
+          })
         }
       }
 
-      // Upload data files
+      const fileEntries: any[] = []
       for (const file of newExperiment.dataFiles) {
         const uploadResult = await uploadFileToStorage(file, experimentData.id, "data")
         if (uploadResult) {
@@ -348,8 +370,30 @@ export default function ResearchPlatform() {
               mime_type: file.type,
             },
           ])
+          fileEntries.push({
+            experiment_id: experimentData.id,
+            name: file.name,
+            file_path: uploadResult.fileName,
+            file_type: "data",
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
+            file_url: uploadResult.publicUrl,
+          })
         }
       }
+
+      setExperiments((prev) => [
+        {
+          ...experimentData,
+          tags: tags.filter((t) => newExperiment.tag_ids.includes(t.id)),
+          protocols: protocolEntries,
+          files: fileEntries,
+          results: [],
+          shared: false,
+        },
+        ...prev,
+      ])
 
       setNewExperiment({
         title: "",
@@ -363,7 +407,6 @@ export default function ResearchPlatform() {
         dataFiles: [],
       })
       setIsAddExperimentOpen(false)
-      fetchExperiments()
     } catch (err) {
       console.error("Add experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
@@ -639,7 +682,7 @@ export default function ResearchPlatform() {
 
   const filteredExperiments = experiments.filter((exp) => {
     const matchesSearch =
-      exp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exp.title && exp.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (exp.description && exp.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (exp.researcher_name && exp.researcher_name.toLowerCase().includes(searchTerm.toLowerCase()))
 
@@ -1099,7 +1142,12 @@ export default function ResearchPlatform() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="space-y-1 flex-1">
-                          <CardTitle className="text-xl">{experiment.title}</CardTitle>
+                          <CardTitle className="text-xl flex items-center gap-2">
+                            {experiment.title}
+                            {experiment.shared && (
+                              <Badge variant="secondary">Shared</Badge>
+                            )}
+                          </CardTitle>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             {experiment.researcher_name && (
                               <>
