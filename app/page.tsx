@@ -59,7 +59,7 @@ export default function ResearchPlatform() {
 
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [shareExperiment, setShareExperiment] = useState<Experiment | null>(null)
-  const [shareUserId, setShareUserId] = useState("")
+  const [shareEmail, setShareEmail] = useState("")
 
   const [uploadingFiles, setUploadingFiles] = useState<{ [key: string]: boolean }>({})
 
@@ -70,6 +70,7 @@ export default function ResearchPlatform() {
     researcher_name: "",
     protocol: "",
     status: "planning" as const,
+    experiment_date: new Date().toISOString().split("T")[0],
     tag_ids: [] as string[],
     protocolFiles: [] as File[],
     dataFiles: [] as File[],
@@ -82,6 +83,7 @@ export default function ResearchPlatform() {
     researcher_name: "",
     protocol: "",
     status: "planning" as const,
+    experiment_date: new Date().toISOString().split("T")[0],
     tag_ids: [] as string[],
   })
 
@@ -282,6 +284,7 @@ export default function ResearchPlatform() {
             researcher_name: newExperiment.researcher_name,
             protocol: newExperiment.protocol,
             status: newExperiment.status,
+            experiment_date: newExperiment.experiment_date,
             user_id: user.id,
           },
         ])
@@ -354,6 +357,7 @@ export default function ResearchPlatform() {
         researcher_name: "",
         protocol: "",
         status: "planning",
+        experiment_date: new Date().toISOString().split("T")[0],
         tag_ids: [],
         protocolFiles: [],
         dataFiles: [],
@@ -382,6 +386,7 @@ export default function ResearchPlatform() {
           researcher_name: editExperimentForm.researcher_name,
           protocol: editExperimentForm.protocol,
           status: editExperimentForm.status,
+          experiment_date: editExperimentForm.experiment_date,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingExperiment.id)
@@ -445,13 +450,39 @@ export default function ResearchPlatform() {
     }
   }
 
-  const shareCurrentExperiment = async () => {
-    if (!user || !shareExperiment || !shareUserId.trim()) return
+  const deleteFile = async (file: any, table: "protocols" | "files") => {
+    if (!user) return
 
     try {
+      if (file.file_path) {
+        await supabase.storage.from("research-files").remove([file.file_path])
+      }
+      await supabase.from(table).delete().eq("id", file.id)
+      fetchExperiments()
+    } catch (err) {
+      console.error("Delete file error:", err)
+      alert("Failed to delete file. Please try again.")
+    }
+  }
+
+  const shareCurrentExperiment = async () => {
+    if (!user || !shareExperiment || !shareEmail.trim()) return
+
+    try {
+      const { data: userId, error: lookupError } = await supabase.rpc(
+        "get_user_id_by_email",
+        { user_email: shareEmail.trim() },
+      )
+
+      if (lookupError || !userId) {
+        console.error("Error finding user:", lookupError)
+        alert("User not found")
+        return
+      }
+
       const { error } = await supabase.from("experiment_shares").insert({
         experiment_id: shareExperiment.id,
-        user_id: shareUserId.trim(),
+        user_id: userId,
       })
 
       if (error) {
@@ -461,7 +492,7 @@ export default function ResearchPlatform() {
       }
 
       setIsShareDialogOpen(false)
-      setShareUserId("")
+      setShareEmail("")
       setShareExperiment(null)
       fetchExperiments()
     } catch (err) {
@@ -478,6 +509,8 @@ export default function ResearchPlatform() {
       researcher_name: experiment.researcher_name || "",
       protocol: experiment.protocol || "",
       status: experiment.status || "planning",
+      experiment_date:
+        experiment.experiment_date || experiment.created_at.split("T")[0],
       tag_ids: experiment.tags.map((tag) => tag.id),
     })
     setIsEditDialogOpen(true)
@@ -755,6 +788,21 @@ export default function ResearchPlatform() {
                             />
                           </div>
                         </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="experiment_date">Experiment Date</Label>
+                          <Input
+                            id="experiment_date"
+                            type="date"
+                            value={newExperiment.experiment_date}
+                            onChange={(e) =>
+                              setNewExperiment({
+                                ...newExperiment,
+                                experiment_date: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
                         
                         <div className="space-y-2">
                           <Label htmlFor="description">Description</Label>
@@ -931,6 +979,20 @@ export default function ResearchPlatform() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="edit-experiment-date">Experiment Date</Label>
+                    <Input
+                      id="edit-experiment-date"
+                      type="date"
+                      value={editExperimentForm.experiment_date}
+                      onChange={(e) =>
+                        setEditExperimentForm({
+                          ...editExperimentForm,
+                          experiment_date: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="edit-description">Description</Label>
                     <Textarea
                       id="edit-description"
@@ -998,13 +1060,14 @@ export default function ResearchPlatform() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Share Experiment</DialogTitle>
-                  <DialogDescription>Enter the user ID of the person to share this experiment with.</DialogDescription>
+                  <DialogDescription>Enter the email of the person to share this experiment with.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <Input
-                    placeholder="User ID"
-                    value={shareUserId}
-                    onChange={(e) => setShareUserId(e.target.value)}
+                    type="email"
+                    placeholder="user@example.com"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
                   />
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
@@ -1045,7 +1108,9 @@ export default function ResearchPlatform() {
                               </>
                             )}
                             <Calendar className="h-4 w-4 ml-2" />
-                            {new Date(experiment.created_at).toLocaleDateString()}
+                            {new Date(
+                              experiment.experiment_date || experiment.created_at,
+                            ).toLocaleDateString()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1182,6 +1247,13 @@ export default function ResearchPlatform() {
                                       </a>
                                     </Button>
                                   )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteFile(protocol, "protocols")}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
                                 </div>
                               ))}
                               {experiment.protocols.length === 0 && (
@@ -1236,6 +1308,13 @@ export default function ResearchPlatform() {
                                     <a href={dataFile.file_url} target="_blank" rel="noopener noreferrer">
                                       <Download className="h-3 w-3" />
                                     </a>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteFile(dataFile, "files")}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
                               ))}
