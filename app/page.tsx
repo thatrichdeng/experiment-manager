@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -40,38 +40,7 @@ import LoginForm from "@/components/auth/login-form"
 import UserProfile from "@/components/auth/user-profile"
 import { FileUpload } from "@/components/file-upload"
 
-// Create Supabase client (singleton pattern)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vnrbidtckiaxljjzmxul.supabase.co",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZucmJpZHRja2lheGxqanpteHVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTM2NzAsImV4cCI6MjA2OTA2OTY3MH0._WO1fuFuFUXvlL6Gsz14CsyxbJzqztdv435FAVslg6I",
-)
-
-interface Experiment {
-  id: string
-  user_id: string
-  title: string
-  description?: string
-  researcher_name?: string
-  protocol?: string
-  status?: "planning" | "in_progress" | "completed" | "on_hold"
-  visibility?: string
-  created_at: string
-  updated_at?: string
-  tags: any[]
-  protocols: any[]
-  files: any[]
-  results: any[]
-}
-
-interface Tag {
-  id: string
-  user_id: string
-  name: string
-  category: "organism" | "reagent" | "technique" | "equipment" | "other"
-  color: string
-  created_at: string
-}
+import type { Experiment, Tag } from "@/lib/types"
 
 export default function ResearchPlatform() {
   // Authentication state
