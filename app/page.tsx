@@ -321,7 +321,7 @@ export default function ResearchPlatform() {
         }
       }
 
-      // Upload protocol files
+      const protocolEntries: any[] = []
       for (const file of newExperiment.protocolFiles) {
         const uploadResult = await uploadFileToStorage(
           file,
@@ -339,10 +339,19 @@ export default function ResearchPlatform() {
               mime_type: file.type,
             },
           ])
+          protocolEntries.push({
+            experiment_id: experimentData.id,
+            name: file.name,
+            file_path: uploadResult.fileName,
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
+            file_url: uploadResult.publicUrl,
+          })
         }
       }
 
-      // Upload data files
+      const fileEntries: any[] = []
       for (const file of newExperiment.dataFiles) {
         const uploadResult = await uploadFileToStorage(file, experimentData.id, "data")
         if (uploadResult) {
@@ -357,8 +366,30 @@ export default function ResearchPlatform() {
               mime_type: file.type,
             },
           ])
+          fileEntries.push({
+            experiment_id: experimentData.id,
+            name: file.name,
+            file_path: uploadResult.fileName,
+            file_type: "data",
+            file_size: file.size,
+            filename: file.name,
+            mime_type: file.type,
+            file_url: uploadResult.publicUrl,
+          })
         }
       }
+
+      setExperiments((prev) => [
+        {
+          ...experimentData,
+          tags: tags.filter((t) => newExperiment.tag_ids.includes(t.id)),
+          protocols: protocolEntries,
+          files: fileEntries,
+          results: [],
+          shared: false,
+        },
+        ...prev,
+      ])
 
       setNewExperiment({
         title: "",
@@ -372,7 +403,6 @@ export default function ResearchPlatform() {
         dataFiles: [],
       })
       setIsAddExperimentOpen(false)
-      fetchExperiments()
     } catch (err) {
       console.error("Add experiment error:", err)
       alert("An unexpected error occurred. Please try again.")
