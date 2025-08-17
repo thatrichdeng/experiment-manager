@@ -23,4 +23,5 @@ export interface Experiment {
   protocols: any[];
   files: any[];
   results: any[];
+  shared?: boolean;
 }
