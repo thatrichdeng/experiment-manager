@@ -158,8 +158,17 @@ export default function ResearchPlatform() {
         return
       }
 
-      const sharedExperiments = (sharedData || []).map((item: any) => item.experiment)
-      const allExperiments = [...(experimentsData || []), ...sharedExperiments]
+      const ownedExperiments = (experimentsData || []).map((exp: any) => ({
+        ...exp,
+        shared: false,
+      }))
+
+      const sharedExperiments = (sharedData || []).map((item: any) => ({
+        ...item.experiment,
+        shared: true,
+      }))
+
+      const allExperiments = [...ownedExperiments, ...sharedExperiments]
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
@@ -1099,7 +1108,12 @@ export default function ResearchPlatform() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="space-y-1 flex-1">
-                          <CardTitle className="text-xl">{experiment.title}</CardTitle>
+                          <CardTitle className="text-xl flex items-center gap-2">
+                            {experiment.title}
+                            {experiment.shared && (
+                              <Badge variant="secondary">Shared</Badge>
+                            )}
+                          </CardTitle>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             {experiment.researcher_name && (
                               <>

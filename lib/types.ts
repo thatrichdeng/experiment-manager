@@ -23,4 +23,8 @@ export interface Experiment {
   protocols: any[];
   files: any[];
   results: any[];
+  /**
+   * Indicates if the experiment is shared with the current user rather than owned
+   */
+  shared?: boolean;
 }
