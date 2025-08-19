@@ -3,7 +3,8 @@ create table if not exists experiment_shares (
     id uuid primary key default gen_random_uuid(),
     experiment_id uuid not null references experiments(id) on delete cascade,
     user_id uuid not null references auth.users(id) on delete cascade,
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    unique (experiment_id, user_id)
 );
 
 -- Enable row level security
