@@ -523,6 +523,24 @@ export default function ResearchPlatform() {
         return
       }
 
+      const { data: existingShare, error: existingShareError } = await supabase
+        .from("experiment_shares")
+        .select("id")
+        .eq("experiment_id", shareExperiment.id)
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingShare) {
+        alert("Experiment already shared with this user")
+        return
+      }
+
+      if (existingShareError) {
+        console.error("Error checking existing share:", existingShareError)
+        alert("Failed to share experiment. Please try again.")
+        return
+      }
+
       const { error } = await supabase.from("experiment_shares").insert({
         experiment_id: shareExperiment.id,
         user_id: userId,
