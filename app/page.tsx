@@ -136,14 +136,14 @@ export default function ResearchPlatform() {
       setLoading(true)
 
       // Fetch experiments owned by the current user
-      const { data: experimentsData, error: experimentsError } = await supabase
+      const { data: ownedData, error: ownedError } = await supabase
         .from("experiments")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (experimentsError) {
-        console.error("Error fetching experiments:", experimentsError)
+      if (ownedError) {
+        console.error("Error fetching experiments:", ownedError)
         return
       }
 
@@ -158,25 +158,21 @@ export default function ResearchPlatform() {
         return
       }
 
-      const ownedExperiments = (experimentsData || []).map((exp: any) => ({
+      const ownedExperiments = (ownedData || []).map((exp: any) => ({
         ...exp,
         shared: false,
       }))
 
-      const sharedExperiments = (sharedData || [])
-        .filter((item: any) => item.experiment)
-        .map((item: any) => ({
-          ...item.experiment,
-          shared: true,
-        }))
+      const sharedExperiments = (sharedData || []).map((item: any) => ({
+        ...item.experiment,
+        shared: true,
+      }))
 
-      const validExperiments = [...ownedExperiments, ...sharedExperiments].filter(
-        (exp) => exp && exp.id,
-      )
+      const allExperiments = [...ownedExperiments, ...sharedExperiments]
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        validExperiments.map(async (exp) => {
+        allExperiments.map(async (exp: any) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
