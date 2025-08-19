@@ -1,0 +1,2260 @@
+[
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "experiment_shares",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "experiment_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "uuid",
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 4
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE UNIQUE INDEX experiment_shares_experiment_id_user_id_key ON public.experiment_shares USING btree (experiment_id, user_id)",
+          "name": "experiment_shares_experiment_id_user_id_key"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX experiment_shares_pkey ON public.experiment_shares USING btree (id)",
+          "name": "experiment_shares_pkey"
+        },
+        {
+          "def": "CREATE INDEX idx_experiment_shares_experiment_id ON public.experiment_shares USING btree (experiment_id)",
+          "name": "idx_experiment_shares_experiment_id"
+        },
+        {
+          "def": "CREATE INDEX idx_experiment_shares_user_id ON public.experiment_shares USING btree (user_id)",
+          "name": "idx_experiment_shares_user_id"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Owners can manage their experiment shares",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = experiment_shares.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "ALL",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Owners can share experiments",
+          "check": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = experiment_shares.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view own shares",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view their shares",
+          "roles": [
+            "public"
+          ],
+          "using": "(user_id = auth.uid())",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 8192,
+        "total": 73728,
+        "indexes": 65536
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (experiment_id) REFERENCES experiments(id) ON DELETE CASCADE",
+          "name": "experiment_shares_experiment_id_fkey",
+          "columns": [
+            "experiment_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "experiments",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        },
+        {
+          "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "name": "experiment_shares_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "users",
+          "ref_schema": "auth",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "experiment_tags",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "experiment_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "uuid",
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 4
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE UNIQUE INDEX experiment_tags_experiment_id_tag_id_key ON public.experiment_tags USING btree (experiment_id, tag_id)",
+          "name": "experiment_tags_experiment_id_tag_id_key"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX experiment_tags_pkey ON public.experiment_tags USING btree (id)",
+          "name": "experiment_tags_pkey"
+        },
+        {
+          "def": "CREATE INDEX idx_experiment_tags_experiment_id ON public.experiment_tags USING btree (experiment_id)",
+          "name": "idx_experiment_tags_experiment_id"
+        },
+        {
+          "def": "CREATE INDEX idx_experiment_tags_tag_id ON public.experiment_tags USING btree (tag_id)",
+          "name": "idx_experiment_tags_tag_id"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can delete tags for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = experiment_tags.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can manage tags for own experiments",
+          "check": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = experiment_tags.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can update tags for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = experiment_tags.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view experiment tags",
+          "roles": [
+            "public"
+          ],
+          "using": "user_can_access_experiment(experiment_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 8192,
+        "total": 73728,
+        "indexes": 65536
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (experiment_id) REFERENCES experiments(id) ON DELETE CASCADE",
+          "name": "experiment_tags_experiment_id_fkey",
+          "columns": [
+            "experiment_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "experiments",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        },
+        {
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "name": "experiment_tags_tag_id_fkey",
+          "columns": [
+            "tag_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "tags",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "experiments",
+      "checks": [
+        {
+          "def": "CHECK ((status = ANY (ARRAY['planning'::text, 'in_progress'::text, 'completed'::text, 'on_hold'::text])))",
+          "name": "experiments_status_check"
+        },
+        {
+          "def": "CHECK ((visibility = ANY (ARRAY['private'::text, 'public'::text, 'shared'::text])))",
+          "name": "experiments_visibility_check"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "title",
+          "type": "text",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "position": 4
+        },
+        {
+          "udt": "text",
+          "name": "researcher_name",
+          "type": "text",
+          "nullable": true,
+          "position": 5
+        },
+        {
+          "udt": "text",
+          "name": "protocol",
+          "type": "text",
+          "nullable": true,
+          "position": 6
+        },
+        {
+          "udt": "text",
+          "name": "status",
+          "type": "text",
+          "default": "'planning'::text",
+          "nullable": false,
+          "position": 7
+        },
+        {
+          "udt": "text",
+          "name": "visibility",
+          "type": "text",
+          "default": "'private'::text",
+          "nullable": true,
+          "position": 8
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 9
+        },
+        {
+          "udt": "timestamptz",
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 10
+        },
+        {
+          "udt": "date",
+          "name": "experiment_date",
+          "type": "date",
+          "nullable": true,
+          "position": 11,
+          "description": "The planned or actual date when the experiment was/will be conducted"
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE UNIQUE INDEX experiments_pkey ON public.experiments USING btree (id)",
+          "name": "experiments_pkey"
+        },
+        {
+          "def": "CREATE INDEX idx_experiments_created_at ON public.experiments USING btree (created_at DESC)",
+          "name": "idx_experiments_created_at"
+        },
+        {
+          "def": "CREATE INDEX idx_experiments_status ON public.experiments USING btree (status)",
+          "name": "idx_experiments_status"
+        },
+        {
+          "def": "CREATE INDEX idx_experiments_user_id ON public.experiments USING btree (user_id)",
+          "name": "idx_experiments_user_id"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Enable delete for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Enable insert for authenticated users",
+          "check": "(auth.uid() = user_id)",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Enable read for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Enable update for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [
+        {
+          "def": "EXECUTE FUNCTION update_updated_at_column()",
+          "name": "update_experiments_updated_at",
+          "event": "UPDATE",
+          "timing": "BEFORE"
+        }
+      ],
+      "size_bytes": {
+        "table": 8192,
+        "total": 81920,
+        "indexes": 65536
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "name": "experiments_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "users",
+          "ref_schema": "auth",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "files",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "experiment_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "file_path",
+          "type": "text",
+          "nullable": false,
+          "position": 4
+        },
+        {
+          "udt": "text",
+          "name": "file_type",
+          "type": "text",
+          "nullable": true,
+          "position": 5
+        },
+        {
+          "udt": "int4",
+          "name": "file_size",
+          "type": "integer",
+          "nullable": true,
+          "position": 6
+        },
+        {
+          "udt": "text",
+          "name": "filename",
+          "type": "text",
+          "nullable": true,
+          "position": 7
+        },
+        {
+          "udt": "text",
+          "name": "mime_type",
+          "type": "text",
+          "nullable": true,
+          "position": 8
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 9
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE UNIQUE INDEX files_pkey ON public.files USING btree (id)",
+          "name": "files_pkey"
+        },
+        {
+          "def": "CREATE INDEX idx_files_experiment_id ON public.files USING btree (experiment_id)",
+          "name": "idx_files_experiment_id"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can delete files for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = files.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can manage files for own experiments",
+          "check": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = files.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can update files for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = files.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view files",
+          "roles": [
+            "public"
+          ],
+          "using": "user_can_access_experiment(experiment_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 0,
+        "total": 24576,
+        "indexes": 16384
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (experiment_id) REFERENCES experiments(id) ON DELETE CASCADE",
+          "name": "files_experiment_id_fkey",
+          "columns": [
+            "experiment_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "experiments",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "profiles",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "text",
+          "name": "email",
+          "type": "text",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "full_name",
+          "type": "text",
+          "nullable": true,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "avatar_url",
+          "type": "text",
+          "nullable": true,
+          "position": 4
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 5
+        },
+        {
+          "udt": "timestamptz",
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 6
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE UNIQUE INDEX profiles_email_key ON public.profiles USING btree (email)",
+          "name": "profiles_email_key"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+          "name": "profiles_pkey"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can insert own profile",
+          "check": "(auth.uid() = id)",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can update own profile",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = id)",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view own profile",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [
+        {
+          "def": "EXECUTE FUNCTION update_updated_at_column()",
+          "name": "update_profiles_updated_at",
+          "event": "UPDATE",
+          "timing": "BEFORE"
+        }
+      ],
+      "size_bytes": {
+        "table": 0,
+        "total": 24576,
+        "indexes": 16384
+      },
+      "foreign_keys": [],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "protocols",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "experiment_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "content",
+          "type": "text",
+          "nullable": true,
+          "position": 4
+        },
+        {
+          "udt": "text",
+          "name": "file_path",
+          "type": "text",
+          "nullable": true,
+          "position": 5
+        },
+        {
+          "udt": "int8",
+          "name": "file_size",
+          "type": "bigint",
+          "nullable": true,
+          "position": 6
+        },
+        {
+          "udt": "text",
+          "name": "filename",
+          "type": "text",
+          "nullable": true,
+          "position": 7
+        },
+        {
+          "udt": "text",
+          "name": "mime_type",
+          "type": "text",
+          "nullable": true,
+          "position": 8
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 9
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE INDEX idx_protocols_experiment_id ON public.protocols USING btree (experiment_id)",
+          "name": "idx_protocols_experiment_id"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX protocols_pkey ON public.protocols USING btree (id)",
+          "name": "protocols_pkey"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can delete protocols for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = protocols.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can manage protocols for own experiments",
+          "check": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = protocols.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can update protocols for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = protocols.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view protocols",
+          "roles": [
+            "public"
+          ],
+          "using": "user_can_access_experiment(experiment_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 8192,
+        "total": 49152,
+        "indexes": 32768
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (experiment_id) REFERENCES experiments(id) ON DELETE CASCADE",
+          "name": "protocols_experiment_id_fkey",
+          "columns": [
+            "experiment_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "experiments",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "results",
+      "checks": [],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "experiment_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "content",
+          "type": "text",
+          "nullable": true,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "file_path",
+          "type": "text",
+          "nullable": true,
+          "position": 4
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 5
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE INDEX idx_results_experiment_id ON public.results USING btree (experiment_id)",
+          "name": "idx_results_experiment_id"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX results_pkey ON public.results USING btree (id)",
+          "name": "results_pkey"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can delete results for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = results.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can manage results for own experiments",
+          "check": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = results.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "roles": [
+            "public"
+          ],
+          "command": "INSERT",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can update results for own experiments",
+          "roles": [
+            "public"
+          ],
+          "using": "(EXISTS ( SELECT 1\n   FROM experiments\n  WHERE ((experiments.id = results.experiment_id) AND (experiments.user_id = auth.uid()))))",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE"
+        },
+        {
+          "name": "Users can view results",
+          "roles": [
+            "public"
+          ],
+          "using": "user_can_access_experiment(experiment_id)",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 0,
+        "total": 24576,
+        "indexes": 16384
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (experiment_id) REFERENCES experiments(id) ON DELETE CASCADE",
+          "name": "results_experiment_id_fkey",
+          "columns": [
+            "experiment_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "experiments",
+          "ref_schema": "public",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  },
+  {
+    "table_json": {
+      "rls": {
+        "forced": false,
+        "enabled": true
+      },
+      "kind": "table",
+      "owner": "postgres",
+      "table": "tags",
+      "checks": [
+        {
+          "def": "CHECK ((category = ANY (ARRAY['organism'::text, 'reagent'::text, 'technique'::text, 'equipment'::text, 'other'::text])))",
+          "name": "tags_category_check"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "anon",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "authenticated",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "postgres",
+          "grantable": "YES",
+          "privilege": "UPDATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "DELETE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "INSERT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "REFERENCES"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "SELECT"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRIGGER"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "TRUNCATE"
+        },
+        {
+          "grantee": "service_role",
+          "grantable": "NO",
+          "privilege": "UPDATE"
+        }
+      ],
+      "schema": "public",
+      "columns": [
+        {
+          "udt": "uuid",
+          "name": "id",
+          "type": "uuid",
+          "default": "uuid_generate_v4()",
+          "nullable": false,
+          "position": 1
+        },
+        {
+          "udt": "uuid",
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false,
+          "position": 2
+        },
+        {
+          "udt": "text",
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "position": 3
+        },
+        {
+          "udt": "text",
+          "name": "category",
+          "type": "text",
+          "default": "'other'::text",
+          "nullable": false,
+          "position": 4
+        },
+        {
+          "udt": "varchar",
+          "name": "color",
+          "type": "character varying",
+          "default": "'#3B82F6'::character varying",
+          "nullable": false,
+          "position": 5
+        },
+        {
+          "udt": "timestamptz",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "nullable": true,
+          "position": 6
+        }
+      ],
+      "indexes": [
+        {
+          "def": "CREATE INDEX idx_tags_user_id ON public.tags USING btree (user_id)",
+          "name": "idx_tags_user_id"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (id)",
+          "name": "tags_pkey"
+        },
+        {
+          "def": "CREATE UNIQUE INDEX tags_user_id_name_key ON public.tags USING btree (user_id, name)",
+          "name": "tags_user_id_name_key"
+        }
+      ],
+      "policies": [
+        {
+          "name": "Users can manage own tags",
+          "roles": [
+            "public"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "command": "ALL",
+          "permissive": "PERMISSIVE"
+        }
+      ],
+      "triggers": [],
+      "size_bytes": {
+        "table": 8192,
+        "total": 65536,
+        "indexes": 49152
+      },
+      "foreign_keys": [
+        {
+          "def": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "name": "tags_user_id_fkey",
+          "columns": [
+            "user_id"
+          ],
+          "on_delete": "cascade",
+          "on_update": "no action",
+          "ref_table": "users",
+          "ref_schema": "auth",
+          "ref_columns": [
+            "id"
+          ]
+        }
+      ],
+      "replica_identity": "d"
+    }
+  }
+]
