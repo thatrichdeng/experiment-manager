@@ -78,36 +78,31 @@ with check (auth.uid() = user_id);
 drop policy if exists "View own or shared experiments" on experiments;
 create policy "View own or shared experiments" on experiments
 for select using (
-    auth.uid() = user_id
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = id)
+    user_can_access_experiment(id)
 );
 
 drop policy if exists "View shared protocols" on protocols;
 create policy "View shared protocols" on protocols
 for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = protocols.experiment_id)
+    user_can_access_experiment(experiment_id)
 );
 
 drop policy if exists "View shared files" on files;
 create policy "View shared files" on files
 for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = files.experiment_id)
+    user_can_access_experiment(experiment_id)
 );
 
 drop policy if exists "View shared results" on results;
 create policy "View shared results" on results
 for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = results.experiment_id)
+    user_can_access_experiment(experiment_id)
 );
 
 drop policy if exists "View shared experiment tags" on experiment_tags;
 create policy "View shared experiment tags" on experiment_tags
 for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = experiment_tags.experiment_id)
+    user_can_access_experiment(experiment_id)
 );
 
 drop policy if exists "View shared tags" on tags;
@@ -116,9 +111,9 @@ for select using (
     auth.uid() = user_id
     or exists (
         select 1
-        from experiment_shares es
-        join experiment_tags et on es.experiment_id = et.experiment_id
-        where et.tag_id = tags.id and es.user_id = auth.uid()
+        from experiment_tags et
+        where et.tag_id = tags.id
+          and user_can_access_experiment(et.experiment_id)
     )
 );
 
