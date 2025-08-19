@@ -75,40 +75,48 @@ with check (auth.uid() = user_id);
 -- Additional policies so shared experiments are readable
 -- ---------------------------------------------------------
 
+-- Helper to determine if the current user can access an experiment
+create or replace function user_can_access_experiment(exp_id uuid)
+returns boolean
+language sql
+security definer
+as $$
+  select exists (
+    select 1
+    from experiments e
+    where e.id = exp_id
+      and (
+        e.user_id = auth.uid()
+        or e.visibility = 'public'
+        or exists (
+          select 1 from experiment_shares es
+          where es.experiment_id = exp_id and es.user_id = auth.uid()
+        )
+      )
+  );
+$$;
+
+grant execute on function user_can_access_experiment to authenticated;
+
 drop policy if exists "View own or shared experiments" on experiments;
 create policy "View own or shared experiments" on experiments
-for select using (
-    auth.uid() = user_id
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = id)
-);
+for select using (user_can_access_experiment(id));
 
 drop policy if exists "View shared protocols" on protocols;
 create policy "View shared protocols" on protocols
-for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = protocols.experiment_id)
-);
+for select using (user_can_access_experiment(experiment_id));
 
 drop policy if exists "View shared files" on files;
 create policy "View shared files" on files
-for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = files.experiment_id)
-);
+for select using (user_can_access_experiment(experiment_id));
 
 drop policy if exists "View shared results" on results;
 create policy "View shared results" on results
-for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = results.experiment_id)
-);
+for select using (user_can_access_experiment(experiment_id));
 
 drop policy if exists "View shared experiment tags" on experiment_tags;
 create policy "View shared experiment tags" on experiment_tags
-for select using (
-    auth.uid() = (select user_id from experiments where id = experiment_id)
-    or auth.uid() in (select user_id from experiment_shares where experiment_id = experiment_tags.experiment_id)
-);
+for select using (user_can_access_experiment(experiment_id));
 
 drop policy if exists "View shared tags" on tags;
 create policy "View shared tags" on tags

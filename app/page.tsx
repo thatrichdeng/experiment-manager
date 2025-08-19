@@ -135,11 +135,10 @@ export default function ResearchPlatform() {
     try {
       setLoading(true)
 
-      // Fetch experiments owned by the current user
+      // Fetch all experiments the user can access (owned or shared)
       const { data: experimentsData, error: experimentsError } = await supabase
         .from("experiments")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
       if (experimentsError) {
@@ -147,36 +146,11 @@ export default function ResearchPlatform() {
         return
       }
 
-      // Fetch experiments shared with the current user
-      const { data: sharedData, error: sharedError } = await supabase
-        .from("experiment_shares")
-        .select("experiment:experiments(*)")
-        .eq("user_id", user.id)
-
-      if (sharedError) {
-        console.error("Error fetching shared experiments:", sharedError)
-        return
-      }
-
-      const ownedExperiments = (experimentsData || []).map((exp: any) => ({
-        ...exp,
-        shared: false,
-      }))
-
-      const sharedExperiments = (sharedData || [])
-        .filter((item: any) => item.experiment)
-        .map((item: any) => ({
-          ...item.experiment,
-          shared: true,
-        }))
-
-      const validExperiments = [...ownedExperiments, ...sharedExperiments].filter(
-        (exp) => exp && exp.id,
-      )
-
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        validExperiments.map(async (exp) => {
+        (experimentsData || []).map(async (exp: any) => {
+          const isShared = exp.user_id !== user.id
+
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -215,6 +189,7 @@ export default function ResearchPlatform() {
 
           return {
             ...exp,
+            shared: isShared,
             tags: tagData?.map((item: any) => item.tags).filter(Boolean) || [],
             protocols: mapWithUrl(protocolData),
             files: mapWithUrl(fileData),
