@@ -135,44 +135,46 @@ export default function ResearchPlatform() {
     try {
       setLoading(true)
 
-      // Fetch experiments owned by the current user
-      const { data: experimentsData, error: experimentsError } = await supabase
+      // Fetch IDs of experiments shared with the current user
+      const { data: shareRows, error: shareError } = await supabase
+        .from("experiment_shares")
+        .select("experiment_id")
+        .eq("user_id", user.id)
+
+      if (shareError) {
+        console.error("Error fetching shared experiments:", shareError)
+        return
+      }
+
+      const sharedIds = shareRows?.map((row: any) => row.experiment_id) || []
+
+      // Fetch experiments owned by the user or shared with them
+      let query = supabase
         .from("experiments")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
+
+      if (sharedIds.length > 0) {
+        query = query.or(
+          `user_id.eq.${user.id},id.in.(${sharedIds.join(",")})`,
+        )
+      } else {
+        query = query.eq("user_id", user.id)
+      }
+
+      const { data: experimentsData, error: experimentsError } = await query
 
       if (experimentsError) {
         console.error("Error fetching experiments:", experimentsError)
         return
       }
 
-      // Fetch experiments shared with the current user
-      const { data: sharedData, error: sharedError } = await supabase
-        .from("experiment_shares")
-        .select("experiment:experiments(*)")
-        .eq("user_id", user.id)
-
-      if (sharedError) {
-        console.error("Error fetching shared experiments:", sharedError)
-        return
-      }
-
-      const ownedExperiments = (experimentsData || []).map((exp: any) => ({
-        ...exp,
-        shared: false,
-      }))
-
-      const sharedExperiments = (sharedData || [])
-        .filter((item: any) => item.experiment)
-        .map((item: any) => ({
-          ...item.experiment,
-          shared: true,
+      const validExperiments = (experimentsData || [])
+        .filter((exp: any) => exp && exp.id)
+        .map((exp: any) => ({
+          ...exp,
+          shared: exp.user_id !== user.id,
         }))
-
-      const validExperiments = [...ownedExperiments, ...sharedExperiments].filter(
-        (exp) => exp && exp.id,
-      )
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
@@ -520,6 +522,24 @@ export default function ResearchPlatform() {
       if (lookupError || !userId) {
         console.error("Error finding user:", lookupError)
         alert("User not found")
+        return
+      }
+
+      const { data: existingShare, error: existingError } = await supabase
+        .from("experiment_shares")
+        .select("id")
+        .eq("experiment_id", shareExperiment.id)
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingError) {
+        console.error("Error checking existing share:", existingError)
+        alert("Failed to share experiment. Please try again.")
+        return
+      }
+
+      if (existingShare) {
+        alert("Experiment already shared with this user.")
         return
       }
 
