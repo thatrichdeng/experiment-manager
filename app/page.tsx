@@ -135,22 +135,44 @@ export default function ResearchPlatform() {
     try {
       setLoading(true)
 
-      // Fetch all experiments the user can access (owned or shared)
-      const { data: experimentsData, error: experimentsError } = await supabase
+      // Fetch experiments owned by the current user
+      const { data: ownedData, error: ownedError } = await supabase
         .from("experiments")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (experimentsError) {
-        console.error("Error fetching experiments:", experimentsError)
+      if (ownedError) {
+        console.error("Error fetching experiments:", ownedError)
         return
       }
 
+      // Fetch experiments shared with the current user
+      const { data: sharedData, error: sharedError } = await supabase
+        .from("experiment_shares")
+        .select("experiment:experiments(*)")
+        .eq("user_id", user.id)
+
+      if (sharedError) {
+        console.error("Error fetching shared experiments:", sharedError)
+        return
+      }
+
+      const ownedExperiments = (ownedData || []).map((exp: any) => ({
+        ...exp,
+        shared: false,
+      }))
+
+      const sharedExperiments = (sharedData || []).map((item: any) => ({
+        ...item.experiment,
+        shared: true,
+      }))
+
+      const allExperiments = [...ownedExperiments, ...sharedExperiments]
+
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        (experimentsData || []).map(async (exp: any) => {
-          const isShared = exp.user_id !== user.id
-
+        allExperiments.map(async (exp: any) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -189,7 +211,6 @@ export default function ResearchPlatform() {
 
           return {
             ...exp,
-            shared: isShared,
             tags: tagData?.map((item: any) => item.tags).filter(Boolean) || [],
             protocols: mapWithUrl(protocolData),
             files: mapWithUrl(fileData),
