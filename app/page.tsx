@@ -53,6 +53,7 @@ export default function ResearchPlatform() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [experimentView, setExperimentView] = useState<"owned" | "shared">("owned")
   const [isAddExperimentOpen, setIsAddExperimentOpen] = useState(false)
   const [editingExperiment, setEditingExperiment] = useState<Experiment | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -135,24 +136,41 @@ export default function ResearchPlatform() {
     try {
       setLoading(true)
 
-      const { data: experimentsData, error: experimentsError } = await supabase
+      const { data: ownedData, error: ownedError } = await supabase
         .from("experiments")
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (experimentsError) {
-        console.error("Error fetching experiments:", experimentsError)
+      if (ownedError) {
+        console.error("Error fetching experiments:", ownedError)
         return
       }
 
-      const validExperiments = (experimentsData || []).map((exp: any) => ({
+      const ownedExperiments = (ownedData || []).map((exp: any) => ({
         ...exp,
-        shared: exp.user_id !== user.id,
+        shared: false,
       }))
+
+      const { data: sharedData, error: sharedError } = await supabase
+        .from("shared_experiments_view")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (sharedError) {
+        console.error("Error fetching shared experiments:", sharedError)
+        return
+      }
+
+      const sharedExperiments = (sharedData || []).map((exp: any) => ({
+        ...exp,
+        shared: true,
+      }))
+
+      const allExperiments = [...ownedExperiments, ...sharedExperiments]
 
       // Fetch related data for each experiment
       const experimentsWithRelations = await Promise.all(
-        validExperiments.map(async (exp) => {
+        allExperiments.map(async (exp) => {
           // Fetch tags for this experiment
           const { data: tagData } = await supabase
             .from("experiment_tags")
@@ -667,7 +685,9 @@ export default function ResearchPlatform() {
     const matchesTags =
       selectedTags.length === 0 || selectedTags.some((tagId) => exp.tags.some((tag) => tag.id === tagId))
 
-    return matchesSearch && matchesStatus && matchesTags
+    const matchesView = experimentView === "shared" ? exp.shared : !exp.shared
+
+    return matchesSearch && matchesStatus && matchesTags && matchesView
   })
 
   const getStatusColor = (status: string) => {
@@ -1099,6 +1119,18 @@ export default function ResearchPlatform() {
             </Dialog>
 
             {/* Experiments List */}
+            <Tabs
+              value={experimentView}
+              onValueChange={(v) => setExperimentView(v as "owned" | "shared")}
+              className="space-y-4"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="owned">My Experiments</TabsTrigger>
+                <TabsTrigger value="shared">Shared with Me</TabsTrigger>
+              </TabsList>
+              <TabsContent value="owned" />
+              <TabsContent value="shared" />
+            </Tabs>
             <div className="space-y-4">
               {loading ? (
                 <Card>
