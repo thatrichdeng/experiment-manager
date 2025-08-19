@@ -844,11 +844,11 @@
           "permissive": "PERMISSIVE"
         },
         {
-          "name": "Users can view own or shared experiments",
+          "name": "Enable read for own experiments",
           "roles": [
             "public"
           ],
-          "using": "user_can_access_experiment(id)",
+          "using": "(auth.uid() = user_id)",
           "command": "SELECT",
           "permissive": "PERMISSIVE"
         },
@@ -2229,15 +2229,6 @@
           ],
           "using": "(auth.uid() = user_id)",
           "command": "ALL",
-          "permissive": "PERMISSIVE"
-        },
-        {
-          "name": "View shared tags",
-          "roles": [
-            "public"
-          ],
-          "using": "(auth.uid() = user_id) OR EXISTS ( SELECT 1 FROM experiment_tags et WHERE (et.tag_id = tags.id) AND user_can_access_experiment(et.experiment_id))",
-          "command": "SELECT",
           "permissive": "PERMISSIVE"
         }
       ],
