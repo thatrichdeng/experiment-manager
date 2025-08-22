@@ -690,6 +690,10 @@ export default function ResearchPlatform() {
     return matchesSearch && matchesStatus && matchesTags && matchesView
   })
 
+  const ownedExperiments = filteredExperiments.filter((exp) => !exp.shared)
+  const sharedExperiments = filteredExperiments.filter((exp) => exp.shared)
+  const sortedExperiments = [...sharedExperiments, ...ownedExperiments]
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "planning":
@@ -1145,28 +1149,35 @@ export default function ResearchPlatform() {
                   </CardContent>
                 </Card>
               ) : (
-                filteredExperiments.map((experiment) => (
-                  <Card key={experiment.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 flex-1">
-                          <CardTitle className="text-xl flex items-center gap-2">
-                            {experiment.title}
-                            {experiment.shared && (
-                              <Badge variant="secondary">Shared</Badge>
-                            )}
-                          </CardTitle>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            {experiment.researcher_name && (
-                              <>
-                                <User className="h-4 w-4" />
-                                {experiment.researcher_name}
-                              </>
-                            )}
-                            <Calendar className="h-4 w-4 ml-2" />
-                            {new Date(
-                              experiment.experiment_date || experiment.created_at,
-                            ).toLocaleDateString()}
+                sortedExperiments.map((experiment, index) => (
+                  <div key={experiment.id} className="space-y-2">
+                    {index === 0 && sharedExperiments.length > 0 && (
+                      <h2 className="text-lg font-semibold">Shared with you</h2>
+                    )}
+                    {index === sharedExperiments.length && sharedExperiments.length > 0 && (
+                      <h2 className="text-lg font-semibold">Your experiments</h2>
+                    )}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1 flex-1">
+                            <CardTitle className="text-xl flex items-center gap-2">
+                              {experiment.title}
+                              {experiment.shared && (
+                                <Badge variant="secondary">Shared</Badge>
+                              )}
+                            </CardTitle>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              {experiment.researcher_name && (
+                                <>
+                                  <User className="h-4 w-4" />
+                                  {experiment.researcher_name}
+                                </>
+                              )}
+                              <Calendar className="h-4 w-4 ml-2" />
+                              {new Date(
+                                experiment.experiment_date || experiment.created_at,
+                              ).toLocaleDateString()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1415,7 +1426,8 @@ export default function ResearchPlatform() {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
                 ))
               )}
             </div>
